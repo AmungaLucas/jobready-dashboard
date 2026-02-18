@@ -168,10 +168,10 @@ export default function DashboardSidebar({ isOpen, onClose }) {
     const sidebarContent = (
         <div className={`flex flex-col h-full ${config.bgGradient} ${config.textColor}`}>
             {/* Logo Section */}
-            <div className={`p-4 sm:p-6 border-b ${userRole === 'admin' ? 'border-gray-700' : 'border-gray-200'} flex-shrink-0`}>
+            <div className={`p-4 sm:p-6 border-b ${userRole === 'admin' ? 'border-gray-700' : 'border-gray-200'} shrink-0`}>
                 <div className="flex items-center justify-between">
                     <h2 className={`text-lg sm:text-xl font-bold flex items-center truncate`}>
-                        <LogoIcon className={`h-6 w-6 sm:h-8 sm:w-8 mr-2 flex-shrink-0 text-${themeColor}-400`} />
+                        <LogoIcon className={`h-6 w-6 sm:h-8 sm:w-8 mr-2 shrink-0 text-${themeColor}-400`} />
                         <span className="truncate">{config.title}</span>
                     </h2>
                     {/* Close button for mobile */}
@@ -207,11 +207,11 @@ export default function DashboardSidebar({ isOpen, onClose }) {
                             `}
                         >
                             <div className="flex items-center min-w-0">
-                                <item.icon className={`h-5 w-5 mr-3 flex-shrink-0 ${isActive ? 'text-white' : config.mutedTextColor}`} />
+                                <item.icon className={`h-5 w-5 mr-3 shrink-0 ${isActive ? 'text-white' : config.mutedTextColor}`} />
                                 <span className="truncate">{item.name}</span>
                             </div>
                             {badgeCount > 0 && (
-                                <span className={`${item.badge?.color || 'bg-red-500'} text-white text-xs px-2 py-1 rounded-full min-w-5 text-center ml-2 flex-shrink-0`}>
+                                <span className={`${item.badge?.color || 'bg-red-500'} text-white text-xs px-2 py-1 rounded-full min-w-5 text-center ml-2 shrink-0`}>
                                     {badgeCount}
                                 </span>
                             )}
@@ -222,7 +222,7 @@ export default function DashboardSidebar({ isOpen, onClose }) {
 
             {/* Quick Stats */}
             {config.stats && (
-                <div className={`p-4 border-t ${userRole === 'admin' ? 'border-gray-700' : 'border-gray-200'} ${config.stats.bgColor} flex-shrink-0`}>
+                <div className={`p-4 border-t ${userRole === 'admin' ? 'border-gray-700' : 'border-gray-200'} ${config.stats.bgColor} shrink-0`}>
                     <div className={`text-xs ${userRole === 'admin' ? 'text-gray-400' : `text-${themeColor}-600`} font-semibold mb-2`}>
                         {config.stats.title}
                     </div>
@@ -232,7 +232,7 @@ export default function DashboardSidebar({ isOpen, onClose }) {
                             return (
                                 <div key={index} className="flex justify-between text-sm">
                                     <span className={`${config.textColor} truncate`}>{stat.label}</span>
-                                    <span className={`font-semibold ${stat.color} ml-2 flex-shrink-0`}>{value}</span>
+                                    <span className={`font-semibold ${stat.color} ml-2 shrink-0`}>{value}</span>
                                 </div>
                             );
                         })}
@@ -241,12 +241,12 @@ export default function DashboardSidebar({ isOpen, onClose }) {
             )}
 
             {/* Logout Button */}
-            <div className={`p-4 border-t ${userRole === 'admin' ? 'border-gray-700' : 'border-gray-200'} flex-shrink-0`}>
+            <div className={`p-4 border-t ${userRole === 'admin' ? 'border-gray-700' : 'border-gray-200'} shrink-0`}>
                 <button
                     onClick={handleLogout}
                     className="w-full flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                 >
-                    <svg className="h-5 w-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="h-5 w-5 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                     </svg>
                     <span>Logout</span>
@@ -258,7 +258,7 @@ export default function DashboardSidebar({ isOpen, onClose }) {
     return (
         <>
             {/* Desktop Sidebar */}
-            <aside className="hidden md:block w-64 flex-shrink-0 h-screen sticky top-0">
+            <aside className="hidden md:block w-64 shrink-0 h-screen sticky top-0">
                 {sidebarContent}
             </aside>
 

@@ -76,7 +76,7 @@ const UsersPage = async () => {
                                     <tr key={u.id} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
-                                                <div className="flex-shrink-0 h-10 w-10">
+                                                <div className="shrink-0 h-10 w-10">
                                                     {u.avatar ? (
                                                         // eslint-disable-next-line @next/next/no-img-element
                                                         <img
@@ -85,7 +85,7 @@ const UsersPage = async () => {
                                                             className="h-10 w-10 rounded-full object-cover"
                                                         />
                                                     ) : (
-                                                        <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold">
+                                                        <div className="h-10 w-10 rounded-full bg-linear-to-r from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold">
                                                             {u.name?.charAt(0) || u.email?.charAt(0) || 'U'}
                                                         </div>
                                                     )}
@@ -131,7 +131,7 @@ const UsersPage = async () => {
                             <div key={u.id} className="p-4 hover:bg-gray-50">
                                 <div className="flex items-start justify-between mb-3">
                                     <div className="flex items-center space-x-3">
-                                        <div className="flex-shrink-0">
+                                        <div className="shrink-0">
                                             {u.avatar ? (
                                                 // eslint-disable-next-line @next/next/no-img-element
                                                 <img
@@ -140,7 +140,7 @@ const UsersPage = async () => {
                                                     className="h-12 w-12 rounded-full object-cover"
                                                 />
                                             ) : (
-                                                <div className="h-12 w-12 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg">
+                                                <div className="h-12 w-12 rounded-full bg-linear-to-r from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg">
                                                     {u.name?.charAt(0) || u.email?.charAt(0) || 'U'}
                                                 </div>
                                             )}

@@ -190,11 +190,11 @@ export default function DashboardHeader({ onMenuClick }) {
                                     return (
                                         <div key={notif.id} className="p-3 hover:bg-gray-50 border-b last:border-b-0">
                                             <div className="flex items-start gap-3">
-                                                <div className={`p-2 rounded-full flex-shrink-0 ${notifType.bgColor}`}>
+                                                <div className={`p-2 rounded-full shrink-0 ${notifType.bgColor}`}>
                                                     <IconComponent className={`h-4 w-4 ${notifType.iconColor}`} />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-sm text-gray-800 break-words">{notif.text}</p>
+                                                    <p className="text-sm text-gray-800 wrap-break-word">{notif.text}</p>
                                                     <p className="text-xs text-gray-500 mt-1">{notif.time}</p>
                                                 </div>
                                             </div>
@@ -227,20 +227,20 @@ export default function DashboardHeader({ onMenuClick }) {
                                     className="rounded-full ring-2 ring-blue-500 h-8 w-8 sm:h-10 sm:w-10"
                                 />
                             ) : (
-                                <div className={`h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-r from-${themeColor}-500 to-${themeColor}-600 flex items-center justify-center text-white font-bold shadow-md text-sm sm:text-base`}>
+                                <div className={`h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-linear-to-r from-${themeColor}-500 to-${themeColor}-600 flex items-center justify-center text-white font-bold shadow-md text-sm sm:text-base`}>
                                     {user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
                                 </div>
                             )}
                             <div className="text-left hidden lg:block">
-                                <p className="text-sm font-medium text-gray-900 truncate max-w-[150px]">
+                                <p className="text-sm font-medium text-gray-900 truncate max-w-37.5">
                                     {user?.name || user?.email}
                                 </p>
                                 <p className={`text-xs text-${themeColor}-600 flex items-center`}>
-                                    <ShieldCheckIcon className="h-3 w-3 mr-1 flex-shrink-0" />
+                                    <ShieldCheckIcon className="h-3 w-3 mr-1 shrink-0" />
                                     <span className="truncate">{config.roleName}</span>
                                 </p>
                             </div>
-                            <ChevronDownIcon className="h-4 w-4 text-gray-500 hidden lg:block flex-shrink-0" />
+                            <ChevronDownIcon className="h-4 w-4 text-gray-500 hidden lg:block shrink-0" />
                         </div>
                     </button>
 
@@ -253,13 +253,13 @@ export default function DashboardHeader({ onMenuClick }) {
                                         href={item.href}
                                         className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
                                     >
-                                        <item.icon className="h-4 w-4 flex-shrink-0" />
+                                        <item.icon className="h-4 w-4 shrink-0" />
                                         <span className="truncate">{item.label}</span>
                                     </a>
                                 ))}
                                 <div className="border-t border-gray-200 my-1"></div>
                                 <button className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">
-                                    <ArrowRightOnRectangleIcon className="h-4 w-4 flex-shrink-0" />
+                                    <ArrowRightOnRectangleIcon className="h-4 w-4 shrink-0" />
                                     <span className="truncate">Sign out</span>
                                 </button>
                             </div>

@@ -40,7 +40,7 @@ export default function UserActions({ id, uid, role }) {
                 throw new Error('Failed to update role')
             }
 
-            // Refresh the page or update local state
+            // Refresh the page
             window.location.reload()
         } catch (error) {
             console.error('Error updating role:', error)
@@ -62,7 +62,6 @@ export default function UserActions({ id, uid, role }) {
                 throw new Error('Failed to delete user')
             }
 
-            // Refresh the page or update local state
             window.location.reload()
         } catch (error) {
             console.error('Error deleting user:', error)

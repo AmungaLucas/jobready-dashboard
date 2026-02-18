@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import UserTooltip from '../users/_components/UserTooltip'
+
 export default function TeamsClient({ counts, groups }) {
     const tabs = ['admins', 'editors', 'moderators']
     const [active, setActive] = useState('admins')
@@ -83,7 +84,7 @@ export default function TeamsClient({ counts, groups }) {
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                     <div className="flex items-center space-x-4">
                                         {/* Avatar */}
-                                        <div className="flex-shrink-0">
+                                        <div className="shrink-0">
                                             {u.avatar ? (
                                                 // eslint-disable-next-line @next/next/no-img-element
                                                 <img
@@ -92,7 +93,7 @@ export default function TeamsClient({ counts, groups }) {
                                                     className="h-12 w-12 sm:h-14 sm:w-14 rounded-full object-cover border-2 border-gray-200"
                                                 />
                                             ) : (
-                                                <div className={`h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-gradient-to-r from-${tabColors[active]}-500 to-${tabColors[active]}-600 flex items-center justify-center text-white font-bold text-lg sm:text-xl shadow-md`}>
+                                                <div className={`h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-linear-to-r from-${tabColors[active]}-500 to-${tabColors[active]}-600 flex items-center justify-center text-white font-bold text-lg sm:text-xl shadow-md`}>
                                                     {u.name?.charAt(0) || u.email?.charAt(0) || 'U'}
                                                 </div>
                                             )}
@@ -126,9 +127,18 @@ export default function TeamsClient({ counts, groups }) {
                                             createdAt={u.createdAt}
                                             lastLogin={u.lastLogin}
                                         />
-                                        <button className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                                            View
-                                        </button>
+                                        {active === 'editors' ? (
+                                            <a
+                                                href={`/admin-dashboard/team/editors/${u.id}`}
+                                                className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                                            >
+                                                View Profile
+                                            </a>
+                                        ) : (
+                                            <button className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                                View
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             </div>

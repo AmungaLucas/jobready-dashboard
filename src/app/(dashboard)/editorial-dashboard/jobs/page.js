@@ -1,11 +1,11 @@
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 
-export default function PostsPage() {
+export default function JobsPage() {
     const LIMIT = 10
-    const [posts, setPosts] = useState([])
+    const [jobs, setJobs] = useState([])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
     const [hasMore, setHasMore] = useState(false)
@@ -17,7 +17,7 @@ export default function PostsPage() {
         setError(null)
         try {
             const url = new URL(window.location.href)
-            url.pathname = '/api/posts'
+            url.pathname = '/api/jobs'
             url.searchParams.set('limit', String(LIMIT))
             if (startAfter) url.searchParams.set('startAfter', startAfter)
 
@@ -25,7 +25,7 @@ export default function PostsPage() {
             const data = await res.json()
             if (!res.ok) throw new Error(data.error || 'Failed to fetch')
 
-            setPosts(data.posts || [])
+            setJobs(data.jobs || [])
             setLastId(data.lastId || null)
             setHasMore(Boolean(data.hasMore))
         } catch (err) {
@@ -54,21 +54,22 @@ export default function PostsPage() {
     }
 
     const handleDelete = async (id) => {
-        if (!confirm('Delete this post?')) return
+        if (!confirm('Delete this job?')) return
         try {
-            const res = await fetch(`/api/posts/${id}`, { method: 'DELETE' })
+            const res = await fetch(`/api/jobs/${id}`, { method: 'DELETE' })
             if (!res.ok) throw new Error('Delete failed')
+            // refresh
             fetchPage(pageStack.current[pageStack.current.length - 1])
         } catch (err) {
             alert('Failed to delete')
         }
     }
 
-    const handleEditTitle = async (post) => {
-        const newTitle = prompt('Edit title', post.title || '')
+    const handleEditTitle = async (job) => {
+        const newTitle = prompt('Edit title', job.title || '')
         if (newTitle === null) return
         try {
-            const res = await fetch(`/api/posts/${post.id}`, {
+            const res = await fetch(`/api/jobs/${job.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ title: newTitle })
@@ -83,41 +84,41 @@ export default function PostsPage() {
     return (
         <div className="px-4 py-6 max-w-6xl mx-auto">
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold">Posts</h1>
-                <Link href="/(dashboard)/editorial-dashboard/posts/create" className="px-3 py-2 bg-blue-600 text-white rounded-md text-sm">
-                    Create Post
+                <h1 className="text-2xl font-bold">Jobs</h1>
+                <Link href="/(dashboard)/editorial-dashboard/jobs/create" className="px-3 py-2 bg-blue-600 text-white rounded-md text-sm">
+                    Create Job
                 </Link>
             </div>
 
             {loading && <div className="p-4">Loading…</div>}
             {error && <div className="p-4 text-red-600">{error}</div>}
 
-            {!loading && posts.length === 0 && (
+            {!loading && jobs.length === 0 && (
                 <div className="bg-white p-6 rounded-lg shadow-sm">
-                    <p className="text-gray-600">No posts found.</p>
+                    <p className="text-gray-600">No jobs found.</p>
                 </div>
             )}
 
             <div className="grid gap-4">
-                {posts.map(post => (
-                    <div key={post.id} className="p-4 bg-white rounded-lg shadow hover:shadow-md">
+                {jobs.map(job => (
+                    <div key={job.id} className="p-4 bg-white rounded-lg shadow hover:shadow-md">
                         <div className="flex justify-between items-start">
                             <div>
-                                <h2 className="text-lg font-semibold">{post.title || 'Untitled'}</h2>
+                                <h2 className="text-lg font-semibold">{job.title || 'Untitled'}</h2>
                                 <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
-                                    <span>{post.authorName || post.createdBy || ''}</span>
-                                    <span className="capitalize">{post.status || 'draft'}</span>
-                                    <span>{post.publishedAt ? new Date(post.publishedAt).toLocaleDateString() : new Date(post.createdAt || post.updatedAt || Date.now()).toLocaleDateString()}</span>
+                                    <span>{job.organisation || job.companyName || ''}</span>
+                                    <span className="capitalize">{job.status || 'draft'}</span>
+                                    <span>{job.datePosted ? new Date(job.datePosted).toLocaleDateString() : new Date(job.createdAt || job.updatedAt || Date.now()).toLocaleDateString()}</span>
                                 </div>
-                                {post.content && (
-                                    <p className="text-sm text-gray-600 mt-2">{String(post.content).replace(/<[^>]*>/g, '').slice(0, 240)}{String(post.content).length > 240 ? '…' : ''}</p>
+                                {job.content && (
+                                    <p className="text-sm text-gray-600 mt-2">{String(job.content).replace(/<[^>]*>/g, '').slice(0, 240)}{String(job.content).length > 240 ? '…' : ''}</p>
                                 )}
                             </div>
 
                             <div className="flex flex-col gap-2 ml-4">
-                                <Link href={`/editorial-dashboard/posts/${post.id}`} className="text-sm text-blue-600">View</Link>
-                                <button onClick={() => handleEditTitle(post)} className="text-sm text-yellow-600 text-left">Edit</button>
-                                <button onClick={() => handleDelete(post.id)} className="text-sm text-red-600 text-left">Delete</button>
+                                <Link href={`/editorial-dashboard/jobs/${job.id}`} className="text-sm text-blue-600">View</Link>
+                                <button onClick={() => handleEditTitle(job)} className="text-sm text-yellow-600 text-left">Edit</button>
+                                <button onClick={() => handleDelete(job.id)} className="text-sm text-red-600 text-left">Delete</button>
                             </div>
                         </div>
                     </div>

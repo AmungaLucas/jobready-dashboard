@@ -57,15 +57,38 @@ export default function EditorialDashboardLayout({ children }) {
     if (!user || !['editor', 'admin'].includes(userRole)) return null;
 
     return (
-        <div className="flex min-h-screen bg-gray-50">
-            <DashboardSidebar
-                isOpen={sidebarOpen}
-                onClose={() => setSidebarOpen(false)}
-            />
-            <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex h-screen bg-gray-50 overflow-hidden">
+            {/* Desktop Sidebar - Fixed/sticky on desktop */}
+            <div className="hidden md:block md:flex-shrink-0">
+                <DashboardSidebar />
+            </div>
+
+            {/* Mobile Sidebar - Slide-over panel */}
+            {sidebarOpen && (
+                <div className="fixed inset-0 z-50 md:hidden">
+                    {/* Backdrop */}
+                    <div
+                        className="fixed inset-0 bg-black/40 transition-opacity"
+                        onClick={() => setSidebarOpen(false)}
+                    />
+
+                    {/* Sidebar panel */}
+                    <div className="fixed inset-y-0 left-0 w-72 max-w-[85vw] overflow-y-auto bg-white shadow-2xl">
+                        <DashboardSidebar
+                            isOpen={sidebarOpen}
+                            onClose={() => setSidebarOpen(false)}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* Main Content Area - Scrollable */}
+            <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
                 <DashboardHeader onMenuClick={() => setSidebarOpen(true)} />
-                <main className="flex-1 p-4 sm:p-6 overflow-x-auto">
-                    <div className="min-w-0 max-w-full">
+
+                {/* Scrollable main content */}
+                <main className="flex-1 overflow-y-auto">
+                    <div className="p-0 sm:p-2">
                         {/* Profile Update Banner */}
                         {!profileStatus.loading && profileStatus.needsProfileUpdate && (
                             <div className="mb-6 p-4 rounded-lg bg-linear-to-r from-yellow-50 to-yellow-100 border-l-4 border-yellow-400 shadow-md">

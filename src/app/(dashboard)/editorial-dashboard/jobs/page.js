@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import {
     Briefcase,
@@ -8,33 +8,41 @@ import {
     MapPin,
     DollarSign,
     Clock,
-    Filter,
-    Search,
-    X,
+    Calendar,
+    Eye,
+    Edit,
+    Trash2,
     ChevronLeft,
     ChevronRight,
     Loader2,
     Plus,
-    Eye,
-    Edit,
-    Trash2,
-    MoreVertical,
+    Search,
+    X,
+    Filter,
     Grid,
     List,
-    Users,
-    Zap,
-    Globe,
-
+    MoreVertical,
     CheckCircle,
     AlertCircle,
-
+    Users,
+    TrendingUp,
+    Globe,
+    Copy,
+    Download,
+    User,
     FileText,
-    Copy
+    Zap,
+    Award,
+    BarChart3,
+    MessageCircle,
+    Share2,
+    BookmarkPlus,
+    Ban
 } from 'lucide-react'
-// Missing imports
 
 export default function JobsPage() {
     const LIMIT = 12
+    const [activeTab, setActiveTab] = useState('all') // 'all' or 'my'
     const [jobs, setJobs] = useState([])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
@@ -46,6 +54,7 @@ export default function JobsPage() {
     const [stats, setStats] = useState({
         total: 0,
         active: 0,
+        draft: 0,
         filled: 0,
         expired: 0,
         views: 0,
@@ -59,6 +68,7 @@ export default function JobsPage() {
     const [typeFilter, setTypeFilter] = useState('all')
     const [locationFilter, setLocationFilter] = useState('all')
     const [salaryRange, setSalaryRange] = useState({ min: '', max: '' })
+    const [experienceFilter, setExperienceFilter] = useState('all')
     const [dateRange, setDateRange] = useState({ start: '', end: '' })
     const [sortBy, setSortBy] = useState('newest')
 
@@ -73,7 +83,8 @@ export default function JobsPage() {
         { value: 'contract', label: 'Contract', icon: FileText, color: 'text-orange-600' },
         { value: 'remote', label: 'Remote', icon: Globe, color: 'text-green-600' },
         { value: 'hybrid', label: 'Hybrid', icon: Building2, color: 'text-indigo-600' },
-        { value: 'freelance', label: 'Freelance', icon: Zap, color: 'text-yellow-600' }
+        { value: 'freelance', label: 'Freelance', icon: Zap, color: 'text-yellow-600' },
+        { value: 'internship', label: 'Internship', icon: Users, color: 'text-pink-600' }
     ]
 
     // Status options
@@ -85,6 +96,17 @@ export default function JobsPage() {
         { value: 'expired', label: 'Expired', icon: Clock, color: 'text-gray-600' }
     ]
 
+    // Experience level options
+    const experienceOptions = [
+        { value: 'all', label: 'Any Experience' },
+        { value: 'entry', label: 'Entry Level' },
+        { value: 'junior', label: 'Junior (1-3 years)' },
+        { value: 'mid', label: 'Mid Level (3-5 years)' },
+        { value: 'senior', label: 'Senior (5-8 years)' },
+        { value: 'lead', label: 'Lead (8+ years)' },
+        { value: 'executive', label: 'Executive' }
+    ]
+
     // Sort options
     const sortOptions = [
         { value: 'newest', label: 'Newest First' },
@@ -92,7 +114,8 @@ export default function JobsPage() {
         { value: 'salary_high', label: 'Highest Salary' },
         { value: 'salary_low', label: 'Lowest Salary' },
         { value: 'applications', label: 'Most Applications' },
-        { value: 'views', label: 'Most Viewed' }
+        { value: 'views', label: 'Most Viewed' },
+        { value: 'deadline', label: 'Closing Soon' }
     ]
 
     // Debounce search
@@ -121,9 +144,15 @@ export default function JobsPage() {
             if (locationFilter !== 'all') url.searchParams.set('location', locationFilter)
             if (salaryRange.min) url.searchParams.set('salaryMin', salaryRange.min)
             if (salaryRange.max) url.searchParams.set('salaryMax', salaryRange.max)
+            if (experienceFilter !== 'all') url.searchParams.set('experience', experienceFilter)
             if (dateRange.start) url.searchParams.set('dateStart', dateRange.start)
             if (dateRange.end) url.searchParams.set('dateEnd', dateRange.end)
             url.searchParams.set('sort', sortBy)
+
+            // Add tab filter
+            if (activeTab === 'my') {
+                url.searchParams.set('myJobs', 'true')
+            }
 
             const res = await fetch(url.toString())
             const data = await res.json()
@@ -143,13 +172,14 @@ export default function JobsPage() {
         } finally {
             setLoading(false)
         }
-    }, [debouncedSearch, statusFilter, typeFilter, locationFilter, salaryRange, dateRange, sortBy])
+    }, [debouncedSearch, statusFilter, typeFilter, locationFilter, salaryRange, experienceFilter, dateRange, sortBy, activeTab])
 
-    // Initial fetch
+    // Initial fetch and filter changes
     useEffect(() => {
         pageStack.current = [null]
+        setSelectedJobs([])
         fetchPage(null)
-    }, [fetchPage])
+    }, [debouncedSearch, statusFilter, typeFilter, locationFilter, salaryRange, experienceFilter, dateRange, sortBy, activeTab, fetchPage])
 
     const handleNext = async () => {
         if (!hasMore) return
@@ -200,6 +230,20 @@ export default function JobsPage() {
         }
     }
 
+    const handleStatusChange = async (id, newStatus) => {
+        try {
+            const res = await fetch(`/api/jobs/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            })
+            if (!res.ok) throw new Error('Update failed')
+            fetchPage(pageStack.current[pageStack.current.length - 1])
+        } catch (err) {
+            alert('Failed to update job status')
+        }
+    }
+
     const toggleJobSelection = (id) => {
         setSelectedJobs(prev =>
             prev.includes(id) ? prev.filter(j => j !== id) : [...prev, id]
@@ -221,6 +265,7 @@ export default function JobsPage() {
         setTypeFilter('all')
         setLocationFilter('all')
         setSalaryRange({ min: '', max: '' })
+        setExperienceFilter('all')
         setDateRange({ start: '', end: '' })
         setSortBy('newest')
     }
@@ -243,6 +288,29 @@ export default function JobsPage() {
         if (diffDays < 7) return `${diffDays} days ago`
         if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
         return `${Math.floor(diffDays / 30)} months ago`
+    }
+
+    const getDaysRemaining = (deadline) => {
+        if (!deadline) return null
+        const now = new Date()
+        const deadlineDate = new Date(deadline)
+        const diffTime = deadlineDate - now
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+        if (diffDays < 0) return 'Expired'
+        if (diffDays === 0) return 'Last day'
+        if (diffDays === 1) return '1 day left'
+        return `${diffDays} days left`
+    }
+
+    const getStatusIcon = (status) => {
+        switch (status) {
+            case 'active': return <CheckCircle className="w-4 h-4 text-green-500" />
+            case 'draft': return <FileText className="w-4 h-4 text-yellow-500" />
+            case 'filled': return <Users className="w-4 h-4 text-blue-500" />
+            case 'expired': return <Clock className="w-4 h-4 text-gray-500" />
+            default: return <Briefcase className="w-4 h-4 text-gray-500" />
+        }
     }
 
     return (
@@ -285,8 +353,42 @@ export default function JobsPage() {
                         </div>
                     </div>
 
+                    {/* Tabs */}
+                    <div className="flex items-center gap-1 mb-4 border-b border-gray-200">
+                        <button
+                            onClick={() => setActiveTab('all')}
+                            className={`px-4 py-2 text-sm font-medium transition-colors relative ${activeTab === 'all'
+                                ? 'text-blue-600'
+                                : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                        >
+                            <div className="flex items-center gap-2">
+                                <Globe className="w-4 h-4" />
+                                All Jobs
+                            </div>
+                            {activeTab === 'all' && (
+                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+                            )}
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('my')}
+                            className={`px-4 py-2 text-sm font-medium transition-colors relative ${activeTab === 'my'
+                                ? 'text-blue-600'
+                                : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                        >
+                            <div className="flex items-center gap-2">
+                                <User className="w-4 h-4" />
+                                My Jobs
+                            </div>
+                            {activeTab === 'my' && (
+                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+                            )}
+                        </button>
+                    </div>
+
                     {/* Stats Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-4">
                         <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3">
                             <p className="text-xs text-blue-600 font-medium">Total Jobs</p>
                             <p className="text-xl font-bold text-gray-900">{stats.total || 0}</p>
@@ -294,6 +396,10 @@ export default function JobsPage() {
                         <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-3">
                             <p className="text-xs text-green-600 font-medium">Active</p>
                             <p className="text-xl font-bold text-gray-900">{stats.active || 0}</p>
+                        </div>
+                        <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg p-3">
+                            <p className="text-xs text-yellow-600 font-medium">Draft</p>
+                            <p className="text-xl font-bold text-gray-900">{stats.draft || 0}</p>
                         </div>
                         <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-3">
                             <p className="text-xs text-purple-600 font-medium">Filled</p>
@@ -303,12 +409,12 @@ export default function JobsPage() {
                             <p className="text-xs text-gray-600 font-medium">Expired</p>
                             <p className="text-xl font-bold text-gray-900">{stats.expired || 0}</p>
                         </div>
-                        <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg p-3">
-                            <p className="text-xs text-yellow-600 font-medium">Views</p>
+                        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-3">
+                            <p className="text-xs text-indigo-600 font-medium">Views</p>
                             <p className="text-xl font-bold text-gray-900">{stats.views?.toLocaleString() || 0}</p>
                         </div>
-                        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-3">
-                            <p className="text-xs text-indigo-600 font-medium">Applications</p>
+                        <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-lg p-3">
+                            <p className="text-xs text-pink-600 font-medium">Applications</p>
                             <p className="text-xl font-bold text-gray-900">{stats.applications || 0}</p>
                         </div>
                     </div>
@@ -336,9 +442,9 @@ export default function JobsPage() {
 
                         <button
                             onClick={() => setShowFilters(!showFilters)}
-                            className={`px-4 py-2.5 border rounded-lg transition-all inline-flex items-center gap-2 ${showFilters || Object.keys(salaryRange).some(k => salaryRange[k]) || typeFilter !== 'all' || locationFilter !== 'all'
-                                    ? 'bg-blue-50 border-blue-300 text-blue-600'
-                                    : 'border-gray-200 bg-white hover:bg-gray-50'
+                            className={`px-4 py-2.5 border rounded-lg transition-all inline-flex items-center gap-2 ${showFilters || statusFilter !== 'all' || typeFilter !== 'all' || locationFilter !== 'all' || salaryRange.min || experienceFilter !== 'all'
+                                ? 'bg-blue-50 border-blue-300 text-blue-600'
+                                : 'border-gray-200 bg-white hover:bg-gray-50'
                                 }`}
                         >
                             <Filter className="w-4 h-4" />
@@ -349,8 +455,8 @@ export default function JobsPage() {
                             <button
                                 onClick={() => setViewMode('grid')}
                                 className={`p-2.5 transition-colors ${viewMode === 'grid'
-                                        ? 'bg-gray-100 text-gray-900'
-                                        : 'text-gray-500 hover:bg-gray-50'
+                                    ? 'bg-gray-100 text-gray-900'
+                                    : 'text-gray-500 hover:bg-gray-50'
                                     }`}
                             >
                                 <Grid className="w-4 h-4" />
@@ -358,8 +464,8 @@ export default function JobsPage() {
                             <button
                                 onClick={() => setViewMode('list')}
                                 className={`p-2.5 transition-colors ${viewMode === 'list'
-                                        ? 'bg-gray-100 text-gray-900'
-                                        : 'text-gray-500 hover:bg-gray-50'
+                                    ? 'bg-gray-100 text-gray-900'
+                                    : 'text-gray-500 hover:bg-gray-50'
                                     }`}
                             >
                                 <List className="w-4 h-4" />
@@ -416,6 +522,23 @@ export default function JobsPage() {
 
                                 <div>
                                     <label className="block text-xs font-medium text-gray-500 mb-1">
+                                        Experience Level
+                                    </label>
+                                    <select
+                                        value={experienceFilter}
+                                        onChange={(e) => setExperienceFilter(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                    >
+                                        {experienceOptions.map(option => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-500 mb-1">
                                         Location
                                     </label>
                                     <input
@@ -453,7 +576,29 @@ export default function JobsPage() {
                                     />
                                 </div>
 
-                                <div>
+                                <div className="lg:col-span-3">
+                                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                                        Date Posted
+                                    </label>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="date"
+                                            value={dateRange.start}
+                                            onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                            placeholder="From"
+                                        />
+                                        <input
+                                            type="date"
+                                            value={dateRange.end}
+                                            onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                            placeholder="To"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="lg:col-span-3">
                                     <label className="block text-xs font-medium text-gray-500 mb-1">
                                         Sort By
                                     </label>
@@ -510,7 +655,9 @@ export default function JobsPage() {
                         <p className="text-gray-500 mb-6 max-w-md mx-auto">
                             {searchQuery || statusFilter !== 'all' || typeFilter !== 'all'
                                 ? 'No jobs match your current filters. Try adjusting your search criteria.'
-                                : 'Get started by creating your first job posting to attract candidates.'}
+                                : activeTab === 'my'
+                                    ? "You haven't posted any jobs yet. Get started by creating your first job posting."
+                                    : 'Get started by creating your first job posting.'}
                         </p>
                         {(searchQuery || statusFilter !== 'all' || typeFilter !== 'all') && (
                             <button
@@ -520,6 +667,15 @@ export default function JobsPage() {
                                 <X className="w-4 h-4" />
                                 Clear Filters
                             </button>
+                        )}
+                        {!searchQuery && statusFilter === 'all' && typeFilter === 'all' && activeTab === 'my' && (
+                            <Link
+                                href="/editorial-dashboard/jobs/create"
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium inline-flex items-center gap-2"
+                            >
+                                <Plus className="w-4 h-4" />
+                                Post Your First Job
+                            </Link>
                         )}
                     </div>
                 )}
@@ -548,139 +704,192 @@ export default function JobsPage() {
                         {/* Grid View */}
                         {viewMode === 'grid' && (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {jobs.map(job => (
-                                    <div
-                                        key={job.id}
-                                        className={`group bg-white rounded-xl border transition-all hover:shadow-xl hover:scale-[1.02] ${selectedJobs.includes(job.id)
+                                {jobs.map(job => {
+                                    const daysRemaining = getDaysRemaining(job.applicationDeadline)
+                                    return (
+                                        <div
+                                            key={job.id}
+                                            className={`group bg-white rounded-xl border transition-all hover:shadow-xl hover:scale-[1.02] ${selectedJobs.includes(job.id)
                                                 ? 'ring-2 ring-blue-500 border-blue-500'
                                                 : 'border-gray-200 hover:border-blue-200'
-                                            }`}
-                                    >
-                                        <div className="p-5">
-                                            {/* Header */}
-                                            <div className="flex items-start justify-between mb-3">
-                                                <div className="flex items-center gap-2">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedJobs.includes(job.id)}
-                                                        onChange={() => toggleJobSelection(job.id)}
-                                                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                        onClick={(e) => e.stopPropagation()}
-                                                    />
-                                                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
-                                                        {job.companyName?.[0] || job.organisation?.[0] || 'J'}
+                                                }`}
+                                        >
+                                            <div className="p-5">
+                                                {/* Header */}
+                                                <div className="flex items-start justify-between mb-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedJobs.includes(job.id)}
+                                                            onChange={() => toggleJobSelection(job.id)}
+                                                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        />
+                                                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                                                            {job.companyName?.[0] || job.organisation?.[0] || 'J'}
+                                                        </div>
+                                                    </div>
+                                                    <div className="relative">
+                                                        <button className="p-1 hover:bg-gray-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <MoreVertical className="w-4 h-4 text-gray-500" />
+                                                        </button>
+                                                        <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 hidden group-hover:block z-10">
+                                                            <Link
+                                                                href={`/editorial-dashboard/jobs/${job.id}`}
+                                                                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                                            >
+                                                                <Eye className="w-4 h-4" /> View Details
+                                                            </Link>
+                                                            <Link
+                                                                href={`/editorial-dashboard/jobs/${job.id}/edit`}
+                                                                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                                            >
+                                                                <Edit className="w-4 h-4" /> Edit Job
+                                                            </Link>
+                                                            <Link
+                                                                href={`/editorial-dashboard/jobs/${job.id}/applications`}
+                                                                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                                            >
+                                                                <Users className="w-4 h-4" /> View Applications
+                                                            </Link>
+                                                            <button
+                                                                onClick={() => handleDuplicate(job)}
+                                                                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left"
+                                                            >
+                                                                <Copy className="w-4 h-4" /> Duplicate
+                                                            </button>
+                                                            <div className="border-t my-1"></div>
+                                                            <div className="px-4 py-2">
+                                                                <p className="text-xs text-gray-500 mb-1">Change Status</p>
+                                                                <div className="space-y-1">
+                                                                    <button
+                                                                        onClick={() => handleStatusChange(job.id, 'active')}
+                                                                        className="flex items-center gap-2 text-sm text-green-600 hover:bg-green-50 w-full text-left px-2 py-1 rounded"
+                                                                    >
+                                                                        <CheckCircle className="w-3 h-3" /> Set Active
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleStatusChange(job.id, 'draft')}
+                                                                        className="flex items-center gap-2 text-sm text-yellow-600 hover:bg-yellow-50 w-full text-left px-2 py-1 rounded"
+                                                                    >
+                                                                        <FileText className="w-3 h-3" /> Save as Draft
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleStatusChange(job.id, 'filled')}
+                                                                        className="flex items-center gap-2 text-sm text-blue-600 hover:bg-blue-50 w-full text-left px-2 py-1 rounded"
+                                                                    >
+                                                                        <Users className="w-3 h-3" /> Mark as Filled
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleStatusChange(job.id, 'expired')}
+                                                                        className="flex items-center gap-2 text-sm text-gray-600 hover:bg-gray-50 w-full text-left px-2 py-1 rounded"
+                                                                    >
+                                                                        <Clock className="w-3 h-3" /> Mark as Expired
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                            <div className="border-t my-1"></div>
+                                                            <button
+                                                                onClick={() => handleDelete(job.id)}
+                                                                className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" /> Delete Job
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div className="relative">
-                                                    <button className="p-1 hover:bg-gray-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <MoreVertical className="w-4 h-4 text-gray-500" />
-                                                    </button>
-                                                    <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 hidden group-hover:block z-10">
-                                                        <Link
-                                                            href={`/editorial-dashboard/jobs/${job.id}`}
-                                                            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                                        >
-                                                            <Eye className="w-4 h-4" /> View Details
+
+                                                {/* Company and Title */}
+                                                <div className="mb-3">
+                                                    <h3 className="text-lg font-semibold text-gray-900 mb-1 line-clamp-2">
+                                                        <Link href={`/editorial-dashboard/jobs/${job.id}`} className="hover:text-blue-600">
+                                                            {job.title || 'Untitled Position'}
                                                         </Link>
-                                                        <Link
-                                                            href={`/editorial-dashboard/jobs/${job.id}/edit`}
-                                                            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                                        >
-                                                            <Edit className="w-4 h-4" /> Edit Job
-                                                        </Link>
-                                                        <button
-                                                            onClick={() => handleDuplicate(job)}
-                                                            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left"
-                                                        >
-                                                            <Copy className="w-4 h-4" /> Duplicate
-                                                        </button>
-                                                        <Link
-                                                            href={`/editorial-dashboard/jobs/${job.id}/applications`}
-                                                            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                                        >
-                                                            <Users className="w-4 h-4" /> View Applications
-                                                        </Link>
-                                                        <div className="border-t my-1"></div>
-                                                        <button
-                                                            onClick={() => handleDelete(job.id)}
-                                                            className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" /> Delete Job
-                                                        </button>
+                                                    </h3>
+                                                    <p className="text-sm text-gray-600 flex items-center gap-1">
+                                                        <Building2 className="w-3 h-3" />
+                                                        {job.organisation || job.companyName || 'Company Name'}
+                                                    </p>
+                                                </div>
+
+                                                {/* Details */}
+                                                <div className="space-y-2 mb-4">
+                                                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                        <MapPin className="w-3 h-3 flex-shrink-0" />
+                                                        <span className="truncate">{job.location || 'Location not specified'}</span>
+                                                        {job.isRemote && (
+                                                            <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0">
+                                                                Remote
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                        <DollarSign className="w-3 h-3 flex-shrink-0" />
+                                                        <span className="truncate">{formatSalary(job.salaryMin, job.salaryMax)}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                        <Briefcase className="w-3 h-3 flex-shrink-0" />
+                                                        <span className="capitalize truncate">{job.type || 'full-time'}</span>
+                                                        {job.experienceLevel && (
+                                                            <>
+                                                                <span>•</span>
+                                                                <span className="truncate">{job.experienceLevel}</span>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </div>
-                                            </div>
 
-                                            {/* Company and Title */}
-                                            <div className="mb-3">
-                                                <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                                                    <Link href={`/editorial-dashboard/jobs/${job.id}`} className="hover:text-blue-600">
-                                                        {job.title || 'Untitled Position'}
-                                                    </Link>
-                                                </h3>
-                                                <p className="text-sm text-gray-600 flex items-center gap-1">
-                                                    <Building2 className="w-3 h-3" />
-                                                    {job.organisation || job.companyName || 'Company Name'}
-                                                </p>
-                                            </div>
+                                                {/* Description Preview */}
+                                                {job.description && (
+                                                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                                                        {String(job.description).replace(/<[^>]*>/g, '').slice(0, 120)}...
+                                                    </p>
+                                                )}
 
-                                            {/* Details */}
-                                            <div className="space-y-2 mb-4">
-                                                <div className="flex items-center gap-2 text-xs text-gray-500">
-                                                    <MapPin className="w-3 h-3" />
-                                                    <span>{job.location || 'Location not specified'}</span>
-                                                    {job.isRemote && (
-                                                        <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-medium">
-                                                            Remote
+                                                {/* Footer */}
+                                                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                                                    <div className="flex items-center gap-2">
+                                                        {getStatusIcon(job.status)}
+                                                        <span className={`text-xs font-medium ${job.status === 'active' ? 'text-green-600' :
+                                                            job.status === 'draft' ? 'text-yellow-600' :
+                                                                job.status === 'filled' ? 'text-blue-600' :
+                                                                    'text-gray-600'
+                                                            }`}>
+                                                            {job.status || 'draft'}
                                                         </span>
-                                                    )}
+                                                    </div>
+                                                    <div className="flex items-center gap-3 text-xs text-gray-400">
+                                                        {daysRemaining && (
+                                                            <span className={`flex items-center gap-1 ${daysRemaining.includes('Expired') ? 'text-red-500' :
+                                                                daysRemaining.includes('Last day') ? 'text-orange-500' :
+                                                                    'text-gray-400'
+                                                                }`}>
+                                                                <Clock className="w-3 h-3" />
+                                                                {daysRemaining}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-2 text-xs text-gray-500">
-                                                    <DollarSign className="w-3 h-3" />
-                                                    <span>{formatSalary(job.salaryMin, job.salaryMax)}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2 text-xs text-gray-500">
-                                                    <Briefcase className="w-3 h-3" />
-                                                    <span className="capitalize">{job.type || 'full-time'}</span>
-                                                </div>
-                                            </div>
-
-                                            {/* Description Preview */}
-                                            {job.content && (
-                                                <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                                                    {String(job.content).replace(/<[^>]*>/g, '').slice(0, 120)}...
-                                                </p>
-                                            )}
-
-                                            {/* Footer */}
-                                            <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                                                <div className="flex items-center gap-3 text-xs">
-                                                    <span className={`px-2 py-1 rounded-full font-medium ${job.status === 'active' ? 'bg-green-100 text-green-700' :
-                                                            job.status === 'draft' ? 'bg-yellow-100 text-yellow-700' :
-                                                                job.status === 'filled' ? 'bg-blue-100 text-blue-700' :
-                                                                    'bg-gray-100 text-gray-700'
-                                                        }`}>
-                                                        {job.status || 'draft'}
-                                                    </span>
-                                                    <span className="text-gray-400 flex items-center gap-1">
-                                                        <Clock className="w-3 h-3" />
+                                                <div className="flex items-center justify-between mt-2 text-xs text-gray-400">
+                                                    <span className="flex items-center gap-1">
+                                                        <Calendar className="w-3 h-3" />
                                                         {getTimeAgo(job.datePosted || job.createdAt)}
                                                     </span>
-                                                </div>
-                                                <div className="flex items-center gap-2 text-xs text-gray-400">
-                                                    <span className="flex items-center gap-1">
-                                                        <Eye className="w-3 h-3" />
-                                                        {job.views || 0}
-                                                    </span>
-                                                    <span className="flex items-center gap-1">
-                                                        <Users className="w-3 h-3" />
-                                                        {job.applications || 0}
-                                                    </span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="flex items-center gap-1">
+                                                            <Eye className="w-3 h-3" />
+                                                            {job.views || 0}
+                                                        </span>
+                                                        <span className="flex items-center gap-1">
+                                                            <Users className="w-3 h-3" />
+                                                            {job.applications || 0}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                         )}
 
@@ -714,10 +923,16 @@ export default function JobsPage() {
                                                 Status
                                             </th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Salary
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                 Posted
                                             </th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Applications
+                                                Deadline
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Apps
                                             </th>
                                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                 Actions
@@ -743,13 +958,21 @@ export default function JobsPage() {
                                                         >
                                                             {job.title || 'Untitled Position'}
                                                         </Link>
+                                                        {job.experienceLevel && (
+                                                            <p className="text-xs text-gray-500 mt-1">
+                                                                {job.experienceLevel}
+                                                            </p>
+                                                        )}
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                     {job.organisation || job.companyName || '-'}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {job.location || 'Remote'}
+                                                    <div className="flex items-center gap-1">
+                                                        <MapPin className="w-3 h-3" />
+                                                        {job.location || 'Remote'}
+                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <span className="text-sm text-gray-500 capitalize">
@@ -758,18 +981,32 @@ export default function JobsPage() {
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${job.status === 'active' ? 'bg-green-100 text-green-700' :
-                                                            job.status === 'draft' ? 'bg-yellow-100 text-yellow-700' :
-                                                                job.status === 'filled' ? 'bg-blue-100 text-blue-700' :
-                                                                    'bg-gray-100 text-gray-700'
+                                                        job.status === 'draft' ? 'bg-yellow-100 text-yellow-700' :
+                                                            job.status === 'filled' ? 'bg-blue-100 text-blue-700' :
+                                                                'bg-gray-100 text-gray-700'
                                                         }`}>
+                                                        {getStatusIcon(job.status)}
                                                         {job.status || 'draft'}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {getTimeAgo(job.datePosted || job.createdAt)}
+                                                    {formatSalary(job.salaryMin, job.salaryMax)}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    <span className="font-medium">{job.applications || 0}</span>
+                                                    {getTimeAgo(job.datePosted || job.createdAt)}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    {job.applicationDeadline && (
+                                                        <span className={`text-sm ${new Date(job.applicationDeadline) < new Date()
+                                                            ? 'text-red-500'
+                                                            : 'text-gray-500'
+                                                            }`}>
+                                                            {new Date(job.applicationDeadline).toLocaleDateString()}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    {job.applications || 0}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                     <div className="flex items-center justify-end gap-2">
@@ -794,6 +1031,13 @@ export default function JobsPage() {
                                                         >
                                                             <Users className="w-4 h-4" />
                                                         </Link>
+                                                        <button
+                                                            onClick={() => handleStatusChange(job.id, 'active')}
+                                                            className="text-gray-400 hover:text-green-600 transition-colors"
+                                                            title="Set Active"
+                                                        >
+                                                            <CheckCircle className="w-4 h-4" />
+                                                        </button>
                                                         <button
                                                             onClick={() => handleDelete(job.id)}
                                                             className="text-gray-400 hover:text-red-600 transition-colors"
@@ -854,4 +1098,3 @@ export default function JobsPage() {
         </div>
     )
 }
-

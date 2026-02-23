@@ -25,19 +25,18 @@ import {
     CheckCircle,
     AlertCircle,
     Users,
-    TrendingUp,
     Globe,
     Copy,
-    Download,
     User,
     FileText,
     Zap,
-    Award,
+    ChevronUp,
+    ChevronDown,
     BarChart3,
-    MessageCircle,
+    Download,
     Share2,
-    BookmarkPlus,
-    Ban
+    Mail,
+    Printer
 } from 'lucide-react'
 
 export default function JobsPage() {
@@ -51,6 +50,9 @@ export default function JobsPage() {
     const [viewMode, setViewMode] = useState('grid')
     const [selectedJobs, setSelectedJobs] = useState([])
     const [showFilters, setShowFilters] = useState(false)
+    const [isHeaderExpanded, setIsHeaderExpanded] = useState(true)
+    const [openMenuId, setOpenMenuId] = useState(null)
+    const menuRef = useRef(null)
     const [stats, setStats] = useState({
         total: 0,
         active: 0,
@@ -74,6 +76,17 @@ export default function JobsPage() {
 
     const pageStack = useRef([null])
     const searchTimeout = useRef(null)
+
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (menuRef.current && !menuRef.current.contains(event.target)) {
+                setOpenMenuId(null)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     // Job types for filtering
     const jobTypes = [
@@ -162,9 +175,21 @@ export default function JobsPage() {
             setLastId(data.lastId || null)
             setHasMore(Boolean(data.hasMore))
 
-            // Update stats if available
+            // Update stats with real data
             if (data.stats) {
                 setStats(data.stats)
+            } else {
+                // Calculate stats from jobs if not provided
+                const newStats = {
+                    total: data.jobs?.length || 0,
+                    active: data.jobs?.filter(j => j.status === 'active').length || 0,
+                    draft: data.jobs?.filter(j => j.status === 'draft').length || 0,
+                    filled: data.jobs?.filter(j => j.status === 'filled').length || 0,
+                    expired: data.jobs?.filter(j => j.status === 'expired').length || 0,
+                    views: data.jobs?.reduce((sum, j) => sum + (j.views || 0), 0) || 0,
+                    applications: data.jobs?.reduce((sum, j) => sum + (j.applications || 0), 0) || 0
+                }
+                setStats(newStats)
             }
         } catch (err) {
             console.error(err)
@@ -199,7 +224,14 @@ export default function JobsPage() {
         try {
             const res = await fetch(`/api/jobs/${id}`, { method: 'DELETE' })
             if (!res.ok) throw new Error('Delete failed')
+            // Update stats after deletion
+            setStats(prev => ({
+                ...prev,
+                total: prev.total - 1,
+                [jobs.find(j => j.id === id)?.status || 'draft']: prev[jobs.find(j => j.id === id)?.status || 'draft'] - 1
+            }))
             fetchPage(pageStack.current[pageStack.current.length - 1])
+            setOpenMenuId(null)
         } catch (err) {
             alert('Failed to delete job')
         }
@@ -225,6 +257,7 @@ export default function JobsPage() {
             const res = await fetch(`/api/jobs/${job.id}/duplicate`, { method: 'POST' })
             if (!res.ok) throw new Error('Duplicate failed')
             fetchPage(pageStack.current[pageStack.current.length - 1])
+            setOpenMenuId(null)
         } catch (err) {
             alert('Failed to duplicate job')
         }
@@ -238,7 +271,19 @@ export default function JobsPage() {
                 body: JSON.stringify({ status: newStatus })
             })
             if (!res.ok) throw new Error('Update failed')
+
+            // Update stats
+            const job = jobs.find(j => j.id === id)
+            if (job) {
+                setStats(prev => ({
+                    ...prev,
+                    [job.status]: prev[job.status] - 1,
+                    [newStatus]: prev[newStatus] + 1
+                }))
+            }
+
             fetchPage(pageStack.current[pageStack.current.length - 1])
+            setOpenMenuId(null)
         } catch (err) {
             alert('Failed to update job status')
         }
@@ -313,12 +358,18 @@ export default function JobsPage() {
         }
     }
 
+    const toggleMenu = (id, e) => {
+        e.stopPropagation()
+        setOpenMenuId(openMenuId === id ? null : id)
+    }
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-            {/* Header with Stats */}
+            {/* Header with Stats - Collapsible */}
             <div className="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm">
                 <div className="px-6 py-4 max-w-7xl mx-auto">
-                    <div className="flex items-center justify-between mb-4">
+                    {/* Header Top Bar with Toggle */}
+                    <div className="flex items-center justify-between mb-2">
                         <div>
                             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                                 <Briefcase className="w-6 h-6 text-blue-600" />
@@ -328,295 +379,299 @@ export default function JobsPage() {
                                 Manage and track all your job listings
                             </p>
                         </div>
+                        <button
+                            onClick={() => setIsHeaderExpanded(!isHeaderExpanded)}
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            title={isHeaderExpanded ? 'Collapse header' : 'Expand header'}
+                        >
+                            {isHeaderExpanded ? (
+                                <ChevronUp className="w-5 h-5 text-gray-500" />
+                            ) : (
+                                <ChevronDown className="w-5 h-5 text-gray-500" />
+                            )}
+                        </button>
+                    </div>
+
+                    {/* Collapsible Content */}
+                    <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isHeaderExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'
+                        }`}>
+                        {/* Tabs */}
+                        <div className="flex items-center gap-1 mb-4 border-b border-gray-200">
+                            <button
+                                onClick={() => setActiveTab('all')}
+                                className={`px-4 py-2 text-sm font-medium transition-colors relative ${activeTab === 'all'
+                                    ? 'text-blue-600'
+                                    : 'text-gray-500 hover:text-gray-700'
+                                    }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Globe className="w-4 h-4" />
+                                    All Jobs
+                                </div>
+                                {activeTab === 'all' && (
+                                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+                                )}
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('my')}
+                                className={`px-4 py-2 text-sm font-medium transition-colors relative ${activeTab === 'my'
+                                    ? 'text-blue-600'
+                                    : 'text-gray-500 hover:text-gray-700'
+                                    }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <User className="w-4 h-4" />
+                                    My Jobs
+                                </div>
+                                {activeTab === 'my' && (
+                                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+                                )}
+                            </button>
+                        </div>
+
+                        {/* Stats Cards - Dynamic */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-4">
+                            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3">
+                                <p className="text-xs text-blue-600 font-medium">Total Jobs</p>
+                                <p className="text-xl font-bold text-gray-900">{stats.total || 0}</p>
+                                <p className="text-xs text-blue-600 mt-1">All time</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-3">
+                                <p className="text-xs text-green-600 font-medium">Active</p>
+                                <p className="text-xl font-bold text-gray-900">{stats.active || 0}</p>
+                                <p className="text-xs text-green-600 mt-1">Currently hiring</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg p-3">
+                                <p className="text-xs text-yellow-600 font-medium">Draft</p>
+                                <p className="text-xl font-bold text-gray-900">{stats.draft || 0}</p>
+                                <p className="text-xs text-yellow-600 mt-1">In progress</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-3">
+                                <p className="text-xs text-purple-600 font-medium">Filled</p>
+                                <p className="text-xl font-bold text-gray-900">{stats.filled || 0}</p>
+                                <p className="text-xs text-purple-600 mt-1">Positions filled</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-3">
+                                <p className="text-xs text-gray-600 font-medium">Expired</p>
+                                <p className="text-xl font-bold text-gray-900">{stats.expired || 0}</p>
+                                <p className="text-xs text-gray-600 mt-1">Past deadline</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-3">
+                                <p className="text-xs text-indigo-600 font-medium">Views</p>
+                                <p className="text-xl font-bold text-gray-900">{stats.views?.toLocaleString() || 0}</p>
+                                <p className="text-xs text-indigo-600 mt-1">Total views</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-lg p-3">
+                                <p className="text-xs text-pink-600 font-medium">Applications</p>
+                                <p className="text-xl font-bold text-gray-900">{stats.applications || 0}</p>
+                                <p className="text-xs text-pink-600 mt-1">Total received</p>
+                            </div>
+                        </div>
+
+                        {/* Search and Filters */}
                         <div className="flex items-center gap-3">
-                            {selectedJobs.length > 0 && (
-                                <>
-                                    <span className="text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded-full">
-                                        {selectedJobs.length} selected
-                                    </span>
+                            <div className="flex-1 relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search jobs by title, company, or description..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                                />
+                                {searchQuery && (
                                     <button
-                                        onClick={handleBulkDelete}
-                                        className="px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium inline-flex items-center gap-2"
+                                        onClick={() => setSearchQuery('')}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2"
                                     >
-                                        <Trash2 className="w-4 h-4" />
-                                        Delete Selected
+                                        <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
                                     </button>
-                                </>
-                            )}
-                            <Link
-                                href="/editorial-dashboard/jobs/create"
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
-                            >
-                                <Plus className="w-4 h-4" />
-                                Post New Job
-                            </Link>
-                        </div>
-                    </div>
-
-                    {/* Tabs */}
-                    <div className="flex items-center gap-1 mb-4 border-b border-gray-200">
-                        <button
-                            onClick={() => setActiveTab('all')}
-                            className={`px-4 py-2 text-sm font-medium transition-colors relative ${activeTab === 'all'
-                                ? 'text-blue-600'
-                                : 'text-gray-500 hover:text-gray-700'
-                                }`}
-                        >
-                            <div className="flex items-center gap-2">
-                                <Globe className="w-4 h-4" />
-                                All Jobs
+                                )}
                             </div>
-                            {activeTab === 'all' && (
-                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
-                            )}
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('my')}
-                            className={`px-4 py-2 text-sm font-medium transition-colors relative ${activeTab === 'my'
-                                ? 'text-blue-600'
-                                : 'text-gray-500 hover:text-gray-700'
-                                }`}
-                        >
-                            <div className="flex items-center gap-2">
-                                <User className="w-4 h-4" />
-                                My Jobs
-                            </div>
-                            {activeTab === 'my' && (
-                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
-                            )}
-                        </button>
-                    </div>
 
-                    {/* Stats Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-4">
-                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3">
-                            <p className="text-xs text-blue-600 font-medium">Total Jobs</p>
-                            <p className="text-xl font-bold text-gray-900">{stats.total || 0}</p>
-                        </div>
-                        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-3">
-                            <p className="text-xs text-green-600 font-medium">Active</p>
-                            <p className="text-xl font-bold text-gray-900">{stats.active || 0}</p>
-                        </div>
-                        <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg p-3">
-                            <p className="text-xs text-yellow-600 font-medium">Draft</p>
-                            <p className="text-xl font-bold text-gray-900">{stats.draft || 0}</p>
-                        </div>
-                        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-3">
-                            <p className="text-xs text-purple-600 font-medium">Filled</p>
-                            <p className="text-xl font-bold text-gray-900">{stats.filled || 0}</p>
-                        </div>
-                        <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-3">
-                            <p className="text-xs text-gray-600 font-medium">Expired</p>
-                            <p className="text-xl font-bold text-gray-900">{stats.expired || 0}</p>
-                        </div>
-                        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-3">
-                            <p className="text-xs text-indigo-600 font-medium">Views</p>
-                            <p className="text-xl font-bold text-gray-900">{stats.views?.toLocaleString() || 0}</p>
-                        </div>
-                        <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-lg p-3">
-                            <p className="text-xs text-pink-600 font-medium">Applications</p>
-                            <p className="text-xl font-bold text-gray-900">{stats.applications || 0}</p>
-                        </div>
-                    </div>
-
-                    {/* Search and Filters */}
-                    <div className="flex items-center gap-3">
-                        <div className="flex-1 relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                            <input
-                                type="text"
-                                placeholder="Search jobs by title, company, or description..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                            />
-                            {searchQuery && (
-                                <button
-                                    onClick={() => setSearchQuery('')}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2"
-                                >
-                                    <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-                                </button>
-                            )}
-                        </div>
-
-                        <button
-                            onClick={() => setShowFilters(!showFilters)}
-                            className={`px-4 py-2.5 border rounded-lg transition-all inline-flex items-center gap-2 ${showFilters || statusFilter !== 'all' || typeFilter !== 'all' || locationFilter !== 'all' || salaryRange.min || experienceFilter !== 'all'
-                                ? 'bg-blue-50 border-blue-300 text-blue-600'
-                                : 'border-gray-200 bg-white hover:bg-gray-50'
-                                }`}
-                        >
-                            <Filter className="w-4 h-4" />
-                            <span className="text-sm font-medium">Filters</span>
-                        </button>
-
-                        <div className="flex items-center border rounded-lg overflow-hidden bg-white">
                             <button
-                                onClick={() => setViewMode('grid')}
-                                className={`p-2.5 transition-colors ${viewMode === 'grid'
-                                    ? 'bg-gray-100 text-gray-900'
-                                    : 'text-gray-500 hover:bg-gray-50'
+                                onClick={() => setShowFilters(!showFilters)}
+                                className={`px-4 py-2.5 border rounded-lg transition-all inline-flex items-center gap-2 ${showFilters || statusFilter !== 'all' || typeFilter !== 'all' || locationFilter !== 'all' || salaryRange.min || experienceFilter !== 'all'
+                                    ? 'bg-blue-50 border-blue-300 text-blue-600'
+                                    : 'border-gray-200 bg-white hover:bg-gray-50'
                                     }`}
                             >
-                                <Grid className="w-4 h-4" />
+                                <Filter className="w-4 h-4" />
+                                <span className="text-sm font-medium">Filters</span>
+                                {(statusFilter !== 'all' || typeFilter !== 'all' || locationFilter !== 'all' || salaryRange.min || experienceFilter !== 'all') && (
+                                    <span className="ml-1 bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                                        {[statusFilter !== 'all', typeFilter !== 'all', locationFilter !== 'all', !!salaryRange.min, experienceFilter !== 'all'].filter(Boolean).length}
+                                    </span>
+                                )}
                             </button>
-                            <button
-                                onClick={() => setViewMode('list')}
-                                className={`p-2.5 transition-colors ${viewMode === 'list'
-                                    ? 'bg-gray-100 text-gray-900'
-                                    : 'text-gray-500 hover:bg-gray-50'
-                                    }`}
-                            >
-                                <List className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </div>
 
-                    {/* Advanced Filters Panel */}
-                    {showFilters && (
-                        <div className="mt-4 p-4 bg-white border rounded-lg shadow-sm">
-                            <div className="flex items-center justify-between mb-3">
-                                <h3 className="font-medium text-gray-900">Advanced Filters</h3>
+                            <div className="flex items-center border rounded-lg overflow-hidden bg-white">
                                 <button
-                                    onClick={clearFilters}
-                                    className="text-sm text-blue-600 hover:text-blue-700"
+                                    onClick={() => setViewMode('grid')}
+                                    className={`p-2.5 transition-colors ${viewMode === 'grid'
+                                        ? 'bg-gray-100 text-gray-900'
+                                        : 'text-gray-500 hover:bg-gray-50'
+                                        }`}
                                 >
-                                    Clear all
+                                    <Grid className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('list')}
+                                    className={`p-2.5 transition-colors ${viewMode === 'list'
+                                        ? 'bg-gray-100 text-gray-900'
+                                        : 'text-gray-500 hover:bg-gray-50'
+                                        }`}
+                                >
+                                    <List className="w-4 h-4" />
                                 </button>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">
-                                        Job Type
-                                    </label>
-                                    <select
-                                        value={typeFilter}
-                                        onChange={(e) => setTypeFilter(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        </div>
+
+                        {/* Advanced Filters Panel */}
+                        {showFilters && (
+                            <div className="mt-4 p-4 bg-white border rounded-lg shadow-sm">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="font-medium text-gray-900">Advanced Filters</h3>
+                                    <button
+                                        onClick={clearFilters}
+                                        className="text-sm text-blue-600 hover:text-blue-700"
                                     >
-                                        {jobTypes.map(type => (
-                                            <option key={type.value} value={type.value}>
-                                                {type.label}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        Clear all
+                                    </button>
                                 </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                                            Job Type
+                                        </label>
+                                        <select
+                                            value={typeFilter}
+                                            onChange={(e) => setTypeFilter(e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                        >
+                                            {jobTypes.map(type => (
+                                                <option key={type.value} value={type.value}>
+                                                    {type.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
 
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">
-                                        Status
-                                    </label>
-                                    <select
-                                        value={statusFilter}
-                                        onChange={(e) => setStatusFilter(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                    >
-                                        {statusOptions.map(option => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                                            Status
+                                        </label>
+                                        <select
+                                            value={statusFilter}
+                                            onChange={(e) => setStatusFilter(e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                        >
+                                            {statusOptions.map(option => (
+                                                <option key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
 
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">
-                                        Experience Level
-                                    </label>
-                                    <select
-                                        value={experienceFilter}
-                                        onChange={(e) => setExperienceFilter(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                    >
-                                        {experienceOptions.map(option => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                                            Experience Level
+                                        </label>
+                                        <select
+                                            value={experienceFilter}
+                                            onChange={(e) => setExperienceFilter(e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                        >
+                                            {experienceOptions.map(option => (
+                                                <option key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
 
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">
-                                        Location
-                                    </label>
-                                    <input
-                                        type="text"
-                                        placeholder="City, State, Remote..."
-                                        value={locationFilter !== 'all' ? locationFilter : ''}
-                                        onChange={(e) => setLocationFilter(e.target.value || 'all')}
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">
-                                        Min Salary ($)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        placeholder="Min"
-                                        value={salaryRange.min}
-                                        onChange={(e) => setSalaryRange(prev => ({ ...prev, min: e.target.value }))}
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">
-                                        Max Salary ($)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        placeholder="Max"
-                                        value={salaryRange.max}
-                                        onChange={(e) => setSalaryRange(prev => ({ ...prev, max: e.target.value }))}
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                    />
-                                </div>
-
-                                <div className="lg:col-span-3">
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">
-                                        Date Posted
-                                    </label>
-                                    <div className="flex gap-2">
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                                            Location
+                                        </label>
                                         <input
-                                            type="date"
-                                            value={dateRange.start}
-                                            onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                            placeholder="From"
-                                        />
-                                        <input
-                                            type="date"
-                                            value={dateRange.end}
-                                            onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                            placeholder="To"
+                                            type="text"
+                                            placeholder="City, State, Remote..."
+                                            value={locationFilter !== 'all' ? locationFilter : ''}
+                                            onChange={(e) => setLocationFilter(e.target.value || 'all')}
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                         />
                                     </div>
-                                </div>
 
-                                <div className="lg:col-span-3">
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">
-                                        Sort By
-                                    </label>
-                                    <select
-                                        value={sortBy}
-                                        onChange={(e) => setSortBy(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                    >
-                                        {sortOptions.map(option => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                                            Min Salary ($)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            placeholder="Min"
+                                            value={salaryRange.min}
+                                            onChange={(e) => setSalaryRange(prev => ({ ...prev, min: e.target.value }))}
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                                            Max Salary ($)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            placeholder="Max"
+                                            value={salaryRange.max}
+                                            onChange={(e) => setSalaryRange(prev => ({ ...prev, max: e.target.value }))}
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                        />
+                                    </div>
+
+                                    <div className="lg:col-span-3">
+                                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                                            Date Posted
+                                        </label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="date"
+                                                value={dateRange.start}
+                                                onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                                                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                                placeholder="From"
+                                            />
+                                            <input
+                                                type="date"
+                                                value={dateRange.end}
+                                                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                                                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                                placeholder="To"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="lg:col-span-3">
+                                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                                            Sort By
+                                        </label>
+                                        <select
+                                            value={sortBy}
+                                            onChange={(e) => setSortBy(e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                        >
+                                            {sortOptions.map(option => (
+                                                <option key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -695,9 +750,17 @@ export default function JobsPage() {
                                 Select all ({jobs.length} jobs)
                             </label>
                             {selectedJobs.length > 0 && (
-                                <span className="text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded-full">
-                                    {selectedJobs.length} selected
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded-full">
+                                        {selectedJobs.length} selected
+                                    </span>
+                                    <button
+                                        onClick={handleBulkDelete}
+                                        className="px-3 py-1 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm"
+                                    >
+                                        Delete Selected
+                                    </button>
+                                </div>
                             )}
                         </div>
 
@@ -709,7 +772,7 @@ export default function JobsPage() {
                                     return (
                                         <div
                                             key={job.id}
-                                            className={`group bg-white rounded-xl border transition-all hover:shadow-xl hover:scale-[1.02] ${selectedJobs.includes(job.id)
+                                            className={`group bg-white rounded-xl border transition-all hover:shadow-xl ${selectedJobs.includes(job.id)
                                                 ? 'ring-2 ring-blue-500 border-blue-500'
                                                 : 'border-gray-200 hover:border-blue-200'
                                                 }`}
@@ -729,73 +792,85 @@ export default function JobsPage() {
                                                             {job.companyName?.[0] || job.organisation?.[0] || 'J'}
                                                         </div>
                                                     </div>
-                                                    <div className="relative">
-                                                        <button className="p-1 hover:bg-gray-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <div className="relative" ref={menuRef}>
+                                                        <button
+                                                            onClick={(e) => toggleMenu(job.id, e)}
+                                                            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                                                        >
                                                             <MoreVertical className="w-4 h-4 text-gray-500" />
                                                         </button>
-                                                        <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 hidden group-hover:block z-10">
-                                                            <Link
-                                                                href={`/editorial-dashboard/jobs/${job.id}`}
-                                                                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                                            >
-                                                                <Eye className="w-4 h-4" /> View Details
-                                                            </Link>
-                                                            <Link
-                                                                href={`/editorial-dashboard/jobs/${job.id}/edit`}
-                                                                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                                            >
-                                                                <Edit className="w-4 h-4" /> Edit Job
-                                                            </Link>
-                                                            <Link
-                                                                href={`/editorial-dashboard/jobs/${job.id}/applications`}
-                                                                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                                            >
-                                                                <Users className="w-4 h-4" /> View Applications
-                                                            </Link>
-                                                            <button
-                                                                onClick={() => handleDuplicate(job)}
-                                                                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left"
-                                                            >
-                                                                <Copy className="w-4 h-4" /> Duplicate
-                                                            </button>
-                                                            <div className="border-t my-1"></div>
-                                                            <div className="px-4 py-2">
-                                                                <p className="text-xs text-gray-500 mb-1">Change Status</p>
-                                                                <div className="space-y-1">
-                                                                    <button
-                                                                        onClick={() => handleStatusChange(job.id, 'active')}
-                                                                        className="flex items-center gap-2 text-sm text-green-600 hover:bg-green-50 w-full text-left px-2 py-1 rounded"
-                                                                    >
-                                                                        <CheckCircle className="w-3 h-3" /> Set Active
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => handleStatusChange(job.id, 'draft')}
-                                                                        className="flex items-center gap-2 text-sm text-yellow-600 hover:bg-yellow-50 w-full text-left px-2 py-1 rounded"
-                                                                    >
-                                                                        <FileText className="w-3 h-3" /> Save as Draft
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => handleStatusChange(job.id, 'filled')}
-                                                                        className="flex items-center gap-2 text-sm text-blue-600 hover:bg-blue-50 w-full text-left px-2 py-1 rounded"
-                                                                    >
-                                                                        <Users className="w-3 h-3" /> Mark as Filled
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => handleStatusChange(job.id, 'expired')}
-                                                                        className="flex items-center gap-2 text-sm text-gray-600 hover:bg-gray-50 w-full text-left px-2 py-1 rounded"
-                                                                    >
-                                                                        <Clock className="w-3 h-3" /> Mark as Expired
-                                                                    </button>
+
+                                                        {/* Dropdown Menu */}
+                                                        {openMenuId === job.id && (
+                                                            <div className="absolute right-0 mt-1 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-30 py-1">
+                                                                <Link
+                                                                    href={`/editorial-dashboard/jobs/${job.id}`}
+                                                                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                                                    onClick={() => setOpenMenuId(null)}
+                                                                >
+                                                                    <Eye className="w-4 h-4" /> View Details
+                                                                </Link>
+                                                                <Link
+                                                                    href={`/editorial-dashboard/jobs/${job.id}/edit`}
+                                                                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                                                    onClick={() => setOpenMenuId(null)}
+                                                                >
+                                                                    <Edit className="w-4 h-4" /> Edit Job
+                                                                </Link>
+                                                                <Link
+                                                                    href={`/editorial-dashboard/jobs/${job.id}/applications`}
+                                                                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                                                    onClick={() => setOpenMenuId(null)}
+                                                                >
+                                                                    <Users className="w-4 h-4" /> View Applications
+                                                                </Link>
+                                                                <button
+                                                                    onClick={() => handleDuplicate(job)}
+                                                                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 w-full text-left transition-colors"
+                                                                >
+                                                                    <Copy className="w-4 h-4" /> Duplicate
+                                                                </button>
+
+                                                                <div className="border-t my-1"></div>
+
+                                                                <div className="px-4 py-2">
+                                                                    <p className="text-xs font-medium text-gray-400 mb-1">Change Status</p>
                                                                 </div>
+                                                                <button
+                                                                    onClick={() => handleStatusChange(job.id, 'active')}
+                                                                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-green-600 hover:bg-green-50 w-full text-left transition-colors"
+                                                                >
+                                                                    <CheckCircle className="w-4 h-4" /> Set Active
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleStatusChange(job.id, 'draft')}
+                                                                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-yellow-600 hover:bg-yellow-50 w-full text-left transition-colors"
+                                                                >
+                                                                    <FileText className="w-4 h-4" /> Save as Draft
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleStatusChange(job.id, 'filled')}
+                                                                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-blue-600 hover:bg-blue-50 w-full text-left transition-colors"
+                                                                >
+                                                                    <Users className="w-4 h-4" /> Mark as Filled
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleStatusChange(job.id, 'expired')}
+                                                                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 w-full text-left transition-colors"
+                                                                >
+                                                                    <Clock className="w-4 h-4" /> Mark as Expired
+                                                                </button>
+
+                                                                <div className="border-t my-1"></div>
+
+                                                                <button
+                                                                    onClick={() => handleDelete(job.id)}
+                                                                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 w-full text-left transition-colors"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" /> Delete Job
+                                                                </button>
                                                             </div>
-                                                            <div className="border-t my-1"></div>
-                                                            <button
-                                                                onClick={() => handleDelete(job.id)}
-                                                                className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
-                                                            >
-                                                                <Trash2 className="w-4 h-4" /> Delete Job
-                                                            </button>
-                                                        </div>
+                                                        )}
                                                     </div>
                                                 </div>
 
@@ -1010,42 +1085,38 @@ export default function JobsPage() {
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                     <div className="flex items-center justify-end gap-2">
-                                                        <Link
-                                                            href={`/editorial-dashboard/jobs/${job.id}`}
-                                                            className="text-gray-400 hover:text-blue-600 transition-colors"
-                                                            title="View Details"
-                                                        >
-                                                            <Eye className="w-4 h-4" />
-                                                        </Link>
-                                                        <Link
-                                                            href={`/editorial-dashboard/jobs/${job.id}/edit`}
-                                                            className="text-gray-400 hover:text-yellow-600 transition-colors"
-                                                            title="Edit Job"
-                                                        >
-                                                            <Edit className="w-4 h-4" />
-                                                        </Link>
-                                                        <Link
-                                                            href={`/editorial-dashboard/jobs/${job.id}/applications`}
-                                                            className="text-gray-400 hover:text-purple-600 transition-colors"
-                                                            title="View Applications"
-                                                        >
-                                                            <Users className="w-4 h-4" />
-                                                        </Link>
                                                         <button
-                                                            onClick={() => handleStatusChange(job.id, 'active')}
-                                                            className="text-gray-400 hover:text-green-600 transition-colors"
-                                                            title="Set Active"
+                                                            onClick={(e) => toggleMenu(job.id, e)}
+                                                            className="text-gray-400 hover:text-gray-600 transition-colors"
+                                                            title="More actions"
                                                         >
-                                                            <CheckCircle className="w-4 h-4" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDelete(job.id)}
-                                                            className="text-gray-400 hover:text-red-600 transition-colors"
-                                                            title="Delete Job"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
+                                                            <MoreVertical className="w-4 h-4" />
                                                         </button>
                                                     </div>
+                                                    {openMenuId === job.id && (
+                                                        <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-30 py-1" ref={menuRef}>
+                                                            <Link
+                                                                href={`/editorial-dashboard/jobs/${job.id}`}
+                                                                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                                                onClick={() => setOpenMenuId(null)}
+                                                            >
+                                                                <Eye className="w-4 h-4" /> View
+                                                            </Link>
+                                                            <Link
+                                                                href={`/editorial-dashboard/jobs/${job.id}/edit`}
+                                                                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                                                onClick={() => setOpenMenuId(null)}
+                                                            >
+                                                                <Edit className="w-4 h-4" /> Edit
+                                                            </Link>
+                                                            <button
+                                                                onClick={() => handleDelete(job.id)}
+                                                                className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" /> Delete
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </td>
                                             </tr>
                                         ))}
@@ -1071,7 +1142,7 @@ export default function JobsPage() {
                                 </span>
                                 <div className="h-4 w-px bg-gray-200"></div>
                                 <span className="text-sm text-gray-500">
-                                    Showing {jobs.length} jobs per page
+                                    Showing {jobs.length} jobs
                                 </span>
                                 {hasMore && (
                                     <>

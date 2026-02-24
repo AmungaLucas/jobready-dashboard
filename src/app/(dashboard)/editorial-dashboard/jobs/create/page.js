@@ -62,7 +62,11 @@ export default function CreateJobPage() {
         content: '', // RTE content
         jobType: 'full-time',
         postType: 'job',
-        createdBy: '',
+        createdBy: {
+            userId: user.uid,
+            name: user.name || user.email,
+            avatar: user.avatar
+        },
         datePosted: null,
         createdAt: null,
         updatedAt: null,

@@ -17,20 +17,10 @@ import {
     ArrowLeftIcon,
     GlobeAltIcon,
     CheckCircleIcon,
-    XMarkIcon,
-    SparklesIcon,
-    ClockIcon,
     UserIcon,
-    ChartBarIcon,
     LinkIcon,
-    PencilSquareIcon,
     ArrowPathIcon,
     BoltIcon,
-    PlusIcon,
-    ChevronDownIcon,
-    MagnifyingGlassIcon,
-    FolderIcon,
-    TagIcon,
     CalendarIcon,
     InformationCircleIcon
 } from '@heroicons/react/24/outline';
@@ -50,6 +40,11 @@ export default function OrganisationCreatePage() {
         website: '',
         category: '',
         subcategory: '',
+        createdBy: {
+            userId: user.uid,
+            name: user.name || user.email,
+            avatar: user.avatar
+        },
         about: '',
         location: {
             city: '',

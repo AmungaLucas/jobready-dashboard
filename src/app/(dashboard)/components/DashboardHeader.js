@@ -96,7 +96,7 @@ const getNotificationsForRole = (role) => {
 };
 
 export default function DashboardHeader({ onMenuClick }) {
-    const { user, userRole = 'admin' } = useAuth();
+    const { user, userRole = 'admin', logout } = useAuth(); // Add logout here
     const [showNotifications, setShowNotifications] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
 
@@ -124,6 +124,15 @@ export default function DashboardHeader({ onMenuClick }) {
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, []);
+
+    const handleLogout = async () => {
+        try {
+            await logout();
+            // The logout function from AuthContext should handle redirect
+        } catch (error) {
+            console.error('Logout failed:', error);
+        }
+    };
 
     return (
         <header className="bg-white shadow-sm px-4 sm:px-6 py-3 flex justify-between items-center border-b sticky top-0 z-40">
@@ -252,13 +261,17 @@ export default function DashboardHeader({ onMenuClick }) {
                                         key={index}
                                         href={item.href}
                                         className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                                        onClick={() => setShowUserMenu(false)}
                                     >
                                         <item.icon className="h-4 w-4 shrink-0" />
                                         <span className="truncate">{item.label}</span>
                                     </a>
                                 ))}
                                 <div className="border-t border-gray-200 my-1"></div>
-                                <button className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                                <button
+                                    onClick={handleLogout}
+                                    className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                >
                                     <ArrowRightOnRectangleIcon className="h-4 w-4 shrink-0" />
                                     <span className="truncate">Sign out</span>
                                 </button>

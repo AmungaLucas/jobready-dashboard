@@ -1,4 +1,4 @@
-import { adminDb } from '@/lib/firebaseAdmin';
+import { adminDb } from '../../../../../lib/firebaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function GET(request, { params }) {

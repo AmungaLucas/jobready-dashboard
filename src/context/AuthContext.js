@@ -2,10 +2,10 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '@/lib/firebaseClient';
-import { 
+import {
   signInWithEmailAndPassword,
   signOut,
-  onAuthStateChanged 
+  onAuthStateChanged
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -24,19 +24,19 @@ export const AuthContextProvider = ({ children }) => {
         try {
           // Get user role from Firestore
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-          
+
           if (userDoc.exists()) {
             const userData = userDoc.data();
             const userWithData = { ...firebaseUser, ...userData };
             setUser(userWithData);
             setUserRole(userData.role);
-            
+
             // Update last login
             await setDoc(doc(db, 'users', firebaseUser.uid), {
               lastLogin: serverTimestamp(),
             }, { merge: true });
 
-            // Set session cookie for middleware
+            // Set session cookie for proxy
             await setSessionCookie(firebaseUser.uid);
           } else {
             console.log('No user document found for:', firebaseUser.uid);

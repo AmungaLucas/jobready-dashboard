@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminAuth } from './src/lib/firebaseAdmin';
 
-export async function middleware(request) {
+export async function proxy(request) {
   const session = request.cookies.get('session')?.value || '';
   const pathname = request.nextUrl.pathname;
 

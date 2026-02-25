@@ -7,13 +7,14 @@ export async function GET(request) {
         const { searchParams } = new URL(request.url);
         const userId = searchParams.get('userId');
 
-        // Default targets (could be stored in settings)
+        // Default targets
         const targets = {
             dailyViews: 1000,
             weeklyViews: 5000,
             monthlyViews: 20000,
             engagement: 20,
             comments: 50,
+            likes: 100,
             shares: 30
         };
 
@@ -41,40 +42,40 @@ export async function GET(request) {
         let monthlyViews = 0;
         let totalEngagement = 0;
         let totalComments = 0;
+        let totalLikes = 0;
         let totalShares = 0;
         let totalViews = 0;
 
         posts.forEach(post => {
-            if (post.views) {
-                totalViews += post.views;
+            const postViews = post.stats?.views || 0;
+            const postComments = post.stats?.comments || 0;
+            const postLikes = post.stats?.likes || 0;
+
+            if (postViews > 0) {
+                totalViews += postViews;
 
                 if (post.publishedAt) {
                     const publishedDate = post.publishedAt.toDate ? post.publishedAt.toDate() : new Date(post.publishedAt);
 
                     if (publishedDate >= startOfDay) {
-                        dailyViews += post.views || 0;
+                        dailyViews += postViews;
                     }
 
                     if (publishedDate >= startOfWeek) {
-                        weeklyViews += post.views || 0;
+                        weeklyViews += postViews;
                     }
 
                     if (publishedDate >= startOfMonth) {
-                        monthlyViews += post.views || 0;
+                        monthlyViews += postViews;
                     }
                 }
             }
 
-            if (post.stats?.comments) {
-                totalComments += post.stats.comments;
-            }
-
-            if (post.stats?.shares) {
-                totalShares += post.stats.shares;
-            }
+            totalComments += postComments;
+            totalLikes += postLikes;
         });
 
-        totalEngagement = totalComments + totalShares;
+        totalEngagement = totalComments + totalLikes;
 
         // Calculate engagement rate
         const engagement = totalViews > 0
@@ -84,16 +85,18 @@ export async function GET(request) {
         // Get top performing posts
         const topPostsQuery = await adminDb.collection('posts')
             .where('status', '==', 'published')
-            .orderBy('views', 'desc')
-            .limit(5)
             .get();
 
-        const topPosts = topPostsQuery.docs.map(doc => ({
-            id: doc.id,
-            title: doc.data().title,
-            views: doc.data().views || 0,
-            engagement: doc.data().stats?.comments || 0
-        }));
+        const topPosts = topPostsQuery.docs
+            .map(doc => ({
+                id: doc.id,
+                title: doc.data().title,
+                views: doc.data().stats?.views || 0,
+                comments: doc.data().stats?.comments || 0,
+                likes: doc.data().stats?.likes || 0
+            }))
+            .sort((a, b) => b.views - a.views)
+            .slice(0, 5);
 
         // Get recent activity (last 7 days)
         const sevenDaysAgo = new Date();
@@ -117,12 +120,14 @@ export async function GET(request) {
                     activityByDay[date] = {
                         views: 0,
                         comments: 0,
+                        likes: 0,
                         posts: 0
                     };
                 }
 
-                activityByDay[date].views += post.views || 0;
+                activityByDay[date].views += post.stats?.views || 0;
                 activityByDay[date].comments += post.stats?.comments || 0;
+                activityByDay[date].likes += post.stats?.likes || 0;
                 activityByDay[date].posts += 1;
             }
         });
@@ -138,8 +143,8 @@ export async function GET(request) {
             engagementTarget: targets.engagement,
             totalComments,
             commentsTarget: targets.comments,
-            totalShares,
-            sharesTarget: targets.shares,
+            totalLikes,
+            likesTarget: targets.likes,
             topPosts,
             activityByDay: Object.entries(activityByDay).map(([date, data]) => ({
                 date,

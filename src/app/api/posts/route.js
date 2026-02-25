@@ -167,7 +167,7 @@ export async function GET(request) {
             published: filteredAllPosts.filter(p => p.status === 'published').length,
             drafts: filteredAllPosts.filter(p => p.status === 'draft').length,
             archived: filteredAllPosts.filter(p => p.status === 'archived').length,
-            views: filteredAllPosts.reduce((sum, p) => sum + (p.views || 0), 0),
+            views: filteredAllPosts.reduce((sum, p) => sum + (p.stats?.views || 0), 0),
             comments: filteredAllPosts.reduce((sum, p) => sum + (p.stats?.comments || 0), 0)
         }
 

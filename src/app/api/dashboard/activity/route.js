@@ -36,7 +36,7 @@ export async function GET(request) {
             activity[dateStr] = {
                 views: 0,
                 comments: 0,
-                shares: 0,
+                likes: 0,
                 posts: 0
             };
         }
@@ -52,9 +52,9 @@ export async function GET(request) {
                 const dateStr = publishedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
                 if (activity[dateStr]) {
-                    activity[dateStr].views += post.views || 0;
+                    activity[dateStr].views += post.stats?.views || 0;
                     activity[dateStr].comments += post.stats?.comments || 0;
-                    activity[dateStr].shares += post.stats?.shares || 0;
+                    activity[dateStr].likes += post.stats?.likes || 0;
                     activity[dateStr].posts += 1;
                 }
             }

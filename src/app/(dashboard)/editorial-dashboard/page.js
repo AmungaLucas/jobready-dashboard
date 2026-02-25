@@ -13,29 +13,16 @@ import {
     Plus,
     Upload,
     Calendar,
-    BarChart3,
-    Users,
+
     MessageCircle,
-    Share2,
     Edit,
     MoreVertical,
     ChevronRight,
     Loader2,
     Zap,
-    Award,
-    Target,
-    Activity,
-    BookOpen,
-    PenTool,
+
     Image as ImageIcon,
-    Video,
-    Settings,
-    HelpCircle,
-    Bell,
-    User,
-    LogOut,
-    Menu,
-    X
+
 } from 'lucide-react';
 
 export default function EditorialDashboard() {
@@ -61,7 +48,6 @@ export default function EditorialDashboard() {
         topCategories: [],
         recentActivity: []
     });
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [selectedTimeRange, setSelectedTimeRange] = useState('today');
 
     // Fetch dashboard data
@@ -90,7 +76,7 @@ export default function EditorialDashboard() {
             } catch (err) {
                 console.error('Dashboard error:', err);
                 setError(err.message);
-                
+
                 // Set mock data for demo
                 setStats({
                     viewsToday: 1234,
@@ -105,7 +91,7 @@ export default function EditorialDashboard() {
                     totalShares: 89,
                     avgReadTime: 4.5
                 });
-                
+
                 setRecentPosts([
                     {
                         id: '1',
@@ -200,7 +186,7 @@ export default function EditorialDashboard() {
     if (loading) {
         return (
             <ProtectedRoute allowedRoles={['editor', 'admin']}>
-                <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+                <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 flex items-center justify-center">
                     <div className="text-center">
                         <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
                         <p className="text-gray-600">Loading dashboard...</p>
@@ -212,100 +198,8 @@ export default function EditorialDashboard() {
 
     return (
         <ProtectedRoute allowedRoles={['editor', 'admin']}>
-            <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-                {/* Mobile Menu Overlay */}
-                {isMobileMenuOpen && (
-                    <div 
-                        className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                    />
-                )}
+            <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100">
 
-                {/* Mobile Sidebar */}
-                <div className={`fixed top-0 left-0 h-full w-64 bg-white shadow-xl z-40 transform transition-transform duration-300 ease-in-out lg:hidden ${
-                    isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-                }`}>
-                    <div className="p-4 border-b">
-                        <div className="flex items-center justify-between">
-                            <h2 className="font-bold text-lg">Menu</h2>
-                            <button onClick={() => setIsMobileMenuOpen(false)}>
-                                <X className="w-5 h-5 text-gray-500" />
-                            </button>
-                        </div>
-                    </div>
-                    <nav className="p-4">
-                        <ul className="space-y-2">
-                            <li>
-                                <Link href="/editorial-dashboard" className="flex items-center gap-3 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg">
-                                    <BarChart3 className="w-4 h-4" />
-                                    Dashboard
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/editorial-dashboard/posts" className="flex items-center gap-3 px-4 py-2 text-gray-600 hover:bg-gray-50 rounded-lg">
-                                    <FileText className="w-4 h-4" />
-                                    Posts
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/editorial-dashboard/jobs" className="flex items-center gap-3 px-4 py-2 text-gray-600 hover:bg-gray-50 rounded-lg">
-                                    <Briefcase className="w-4 h-4" />
-                                    Jobs
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="/editorial-dashboard/media" className="flex items-center gap-3 px-4 py-2 text-gray-600 hover:bg-gray-50 rounded-lg">
-                                    <ImageIcon className="w-4 h-4" />
-                                    Media
-                                </Link>
-                            </li>
-                        </ul>
-                    </nav>
-                </div>
-
-                {/* Top Navigation */}
-                <div className="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm">
-                    <div className="px-4 sm:px-6 lg:px-8 py-3">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <button
-                                    onClick={() => setIsMobileMenuOpen(true)}
-                                    className="p-2 hover:bg-gray-100 rounded-lg lg:hidden"
-                                >
-                                    <Menu className="w-5 h-5 text-gray-500" />
-                                </button>
-                                <div>
-                                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
-                                        <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
-                                    </h1>
-                                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5 hidden sm:block">
-                                        Manage content, track performance, and publish faster.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 sm:gap-3">
-                                <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg relative">
-                                    <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
-                                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                                </button>
-                                <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
-                                    <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-                                </button>
-                                <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
-                                    <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
-                                </button>
-                                <div className="h-6 w-px bg-gray-200 mx-1 hidden sm:block"></div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                                        JD
-                                    </div>
-                                    <span className="text-sm font-medium text-gray-700 hidden sm:block">John Doe</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
                 {/* Main Content */}
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -316,11 +210,10 @@ export default function EditorialDashboard() {
                                 <button
                                     key={range}
                                     onClick={() => setSelectedTimeRange(range)}
-                                    className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors ${
-                                        selectedTimeRange === range
-                                            ? 'bg-blue-600 text-white'
-                                            : 'text-gray-600 hover:bg-gray-50'
-                                    }`}
+                                    className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors ${selectedTimeRange === range
+                                        ? 'bg-blue-600 text-white'
+                                        : 'text-gray-600 hover:bg-gray-50'
+                                        }`}
                                 >
                                     {range.charAt(0).toUpperCase() + range.slice(1)}
                                 </button>
@@ -336,11 +229,10 @@ export default function EditorialDashboard() {
                                 <div className="p-2 bg-blue-50 rounded-lg">
                                     <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                                 </div>
-                                <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                                    stats.viewsToday > stats.viewsYesterday 
-                                        ? 'bg-green-50 text-green-600' 
-                                        : 'bg-red-50 text-red-600'
-                                }`}>
+                                <span className={`text-xs font-medium px-2 py-1 rounded-full ${stats.viewsToday > stats.viewsYesterday
+                                    ? 'bg-green-50 text-green-600'
+                                    : 'bg-red-50 text-red-600'
+                                    }`}>
                                     {getPercentChange(stats.viewsToday, stats.viewsYesterday)}
                                 </span>
                             </div>
@@ -357,11 +249,10 @@ export default function EditorialDashboard() {
                                 <div className="p-2 bg-green-50 rounded-lg">
                                     <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
                                 </div>
-                                <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                                    stats.engagementRate > stats.previousEngagement 
-                                        ? 'bg-green-50 text-green-600' 
-                                        : 'bg-red-50 text-red-600'
-                                }`}>
+                                <span className={`text-xs font-medium px-2 py-1 rounded-full ${stats.engagementRate > stats.previousEngagement
+                                    ? 'bg-green-50 text-green-600'
+                                    : 'bg-red-50 text-red-600'
+                                    }`}>
                                     {getPercentChange(stats.engagementRate, stats.previousEngagement)}
                                 </span>
                             </div>
@@ -526,7 +417,7 @@ export default function EditorialDashboard() {
                                 <div className="space-y-3">
                                     <Link
                                         href="/editorial-dashboard/posts/create"
-                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-sm hover:shadow text-sm font-medium"
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-linear-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-sm hover:shadow text-sm font-medium"
                                     >
                                         <Plus className="w-4 h-4" />
                                         Create New Post
@@ -534,7 +425,7 @@ export default function EditorialDashboard() {
 
                                     <Link
                                         href="/editorial-dashboard/media/upload"
-                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all shadow-sm hover:shadow text-sm font-medium"
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-linear-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all shadow-sm hover:shadow text-sm font-medium"
                                     >
                                         <Upload className="w-4 h-4" />
                                         Upload Media
@@ -542,7 +433,7 @@ export default function EditorialDashboard() {
 
                                     <Link
                                         href="/editorial-dashboard/schedule"
-                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-sm hover:shadow text-sm font-medium"
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-linear-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-sm hover:shadow text-sm font-medium"
                                     >
                                         <Calendar className="w-4 h-4" />
                                         Schedule Content
@@ -569,7 +460,7 @@ export default function EditorialDashboard() {
                                     </div>
                                     <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
                                         <div
-                                            className="bg-gradient-to-r from-blue-500 to-indigo-600 h-2.5 rounded-full transition-all duration-500"
+                                            className="bg-linear-to-r from-blue-500 to-indigo-600 h-2.5 rounded-full transition-all duration-500"
                                             style={{ width: `${performanceData.dailyViews}%` }}
                                         />
                                     </div>
@@ -584,7 +475,7 @@ export default function EditorialDashboard() {
                                     </div>
                                     <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
                                         <div
-                                            className="bg-gradient-to-r from-green-500 to-emerald-600 h-2.5 rounded-full transition-all duration-500"
+                                            className="bg-linear-to-r from-green-500 to-emerald-600 h-2.5 rounded-full transition-all duration-500"
                                             style={{ width: `${performanceData.weeklyGrowth}%` }}
                                         />
                                     </div>
@@ -601,7 +492,7 @@ export default function EditorialDashboard() {
                                         <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
                                             <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: '45%' }} />
                                         </div>
-                                        
+
                                         <div className="flex items-center justify-between mt-2">
                                             <span className="text-sm text-gray-600">Business</span>
                                             <span className="text-sm font-medium text-gray-900">30%</span>
@@ -609,7 +500,7 @@ export default function EditorialDashboard() {
                                         <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
                                             <div className="bg-green-500 h-1.5 rounded-full" style={{ width: '30%' }} />
                                         </div>
-                                        
+
                                         <div className="flex items-center justify-between mt-2">
                                             <span className="text-sm text-gray-600">Lifestyle</span>
                                             <span className="text-sm font-medium text-gray-900">25%</span>
@@ -622,7 +513,7 @@ export default function EditorialDashboard() {
                             </div>
 
                             {/* Quick Tips */}
-                            <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-sm p-5 sm:p-6 text-white">
+                            <div className="bg-linear-to-br from-blue-600 to-indigo-600 rounded-xl shadow-sm p-5 sm:p-6 text-white">
                                 <div className="flex items-center gap-2 mb-3">
                                     <Zap className="w-5 h-5" />
                                     <h3 className="text-base font-semibold">Pro Tip</h3>
@@ -646,5 +537,3 @@ export default function EditorialDashboard() {
     );
 }
 
-// Missing import
-import { Briefcase } from 'lucide-react';

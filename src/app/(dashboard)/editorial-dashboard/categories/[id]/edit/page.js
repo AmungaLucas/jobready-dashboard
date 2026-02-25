@@ -1,12 +1,17 @@
+// file: src/app/(dashboard)/editorial-dashboard/categories/[id]/edit/page.js
+
 'use client';
 
 import { useAuth } from '@/context/AuthContext';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
     ArrowLeftIcon,
     FolderIcon,
+    TagIcon,
+    PhotoIcon,
+    DocumentTextIcon,
     GlobeAltIcon,
     CheckCircleIcon,
     XMarkIcon,
@@ -15,15 +20,26 @@ import {
     BoltIcon,
     EyeIcon,
     DocumentDuplicateIcon,
+    ChevronDownIcon,
+    ExclamationTriangleIcon,
+    TrashIcon,
 } from '@heroicons/react/24/outline';
 
-export default function CreateCategoryPage() {
+export default function EditCategoryPage() {
     const { user } = useAuth();
     const router = useRouter();
+    const params = useParams();
+    const categoryId = params.id;
+
+    const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [preview, setPreview] = useState(false);
     const [categories, setCategories] = useState([]);
     const [loadingCategories, setLoadingCategories] = useState(true);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+
+    // Initialize with safe default values
     const [formData, setFormData] = useState({
         name: '',
         slug: '',
@@ -61,33 +77,59 @@ export default function CreateCategoryPage() {
         { value: '#6B7280', label: 'Gray', class: 'bg-gray-500' },
     ];
 
-    // Fetch parent categories on mount
+    // Fetch category data on mount
     useEffect(() => {
-        fetchParentCategories();
-    }, []);
-
-    // Generate slug from name
-    useEffect(() => {
-        if (formData.name && !formData.slug) {
-            setFormData(prev => ({
-                ...prev,
-                slug: generateSlug(prev.name),
-                seo: {
-                    ...prev.seo,
-                    metaTitle: prev.seo.metaTitle || prev.name,
-                    metaDescription: prev.seo.metaDescription || prev.description
-                }
-            }));
+        if (categoryId) {
+            fetchCategory();
+            fetchParentCategories();
         }
-    }, [formData.name]);
+    }, [categoryId]);
 
     // Update character counts
     useEffect(() => {
         setCharCounts({
-            name: formData.name.length,
-            description: formData.description.length
+            name: formData.name?.length || 0,
+            description: formData.description?.length || 0
         });
     }, [formData.name, formData.description]);
+
+    const fetchCategory = async () => {
+        setLoading(true);
+        try {
+            const response = await fetch(`/api/categories?id=${categoryId}&includeCounts=true`);
+            if (response.ok) {
+                const data = await response.json();
+
+                // Safely set form data with fallbacks for nested objects
+                setFormData({
+                    name: data.name || '',
+                    slug: data.slug || '',
+                    description: data.description || '',
+                    parentId: data.parentId || '',
+                    icon: data.icon || '',
+                    color: data.color || '#3B82F6',
+                    image: data.image || '',
+                    featured: data.featured || false,
+                    status: data.status || 'active',
+                    seo: {
+                        metaTitle: data.seo?.metaTitle || data.name || '',
+                        metaDescription: data.seo?.metaDescription || data.description || '',
+                        canonicalUrl: data.seo?.canonicalUrl || ''
+                    }
+                });
+            } else if (response.status === 404) {
+                alert('Category not found');
+                router.push('/editorial-dashboard/categories');
+            } else {
+                alert('Failed to load category');
+            }
+        } catch (error) {
+            console.error('Error fetching category:', error);
+            alert('Failed to load category');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const fetchParentCategories = async () => {
         setLoadingCategories(true);
@@ -95,8 +137,8 @@ export default function CreateCategoryPage() {
             const response = await fetch('/api/categories');
             if (response.ok) {
                 const data = await response.json();
-                // Filter out categories that might be deleted
-                setCategories(data.filter(cat => !cat.isDeleted));
+                // Filter out current category and deleted ones
+                setCategories(data.filter(cat => !cat.isDeleted && cat.id !== categoryId));
             }
         } catch (error) {
             console.error('Error fetching categories:', error);
@@ -119,19 +161,23 @@ export default function CreateCategoryPage() {
             ...formData,
             name,
             slug: generateSlug(name),
+            seo: {
+                ...formData.seo,
+                metaTitle: formData.seo?.metaTitle || name
+            }
         });
     };
 
     const validateForm = () => {
         const newErrors = {};
 
-        if (!formData.name.trim()) {
+        if (!formData.name?.trim()) {
             newErrors.name = 'Category name is required';
         } else if (formData.name.length < 3) {
             newErrors.name = 'Category name should be at least 3 characters';
         }
 
-        if (!formData.slug.trim()) {
+        if (!formData.slug?.trim()) {
             newErrors.slug = 'Slug is required';
         } else if (!/^[a-z0-9-]+$/.test(formData.slug)) {
             newErrors.slug = 'Slug can only contain lowercase letters, numbers, and hyphens';
@@ -156,19 +202,16 @@ export default function CreateCategoryPage() {
         try {
             const categoryData = {
                 ...formData,
-                createdBy: {
-                    userId: user.uid,
-                    name: user.name || user.email,
-                    avatar: user.avatar
+                updatedBy: {
+                    userId: user?.uid || '',
+                    name: user?.name || user?.email || '',
+                    avatar: user?.avatar || ''
                 },
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                isDeleted: false,
-                postCount: 0
+                updatedAt: new Date().toISOString()
             };
 
-            const response = await fetch('/api/categories', {
-                method: 'POST',
+            const response = await fetch(`/api/categories?id=${categoryId}`, {
+                method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                 },
@@ -176,20 +219,18 @@ export default function CreateCategoryPage() {
             });
 
             if (response.ok) {
-                const data = await response.json();
-                // Show success message or redirect
                 router.push('/editorial-dashboard/categories');
             } else {
                 const data = await response.json();
                 if (response.status === 409) {
                     setErrors({ ...errors, slug: 'A category with this slug already exists' });
                 } else {
-                    alert(data.error || 'Failed to create category');
+                    alert(data.error || 'Failed to update category');
                 }
             }
         } catch (error) {
-            console.error('Error creating category:', error);
-            alert('Failed to create category');
+            console.error('Error updating category:', error);
+            alert('Failed to update category');
         } finally {
             setSaving(false);
         }
@@ -200,7 +241,29 @@ export default function CreateCategoryPage() {
         await handleSubmit(new Event('submit'));
     };
 
-    // Preview Component
+    const handleDelete = async (hardDelete = false) => {
+        setDeleting(true);
+        try {
+            const response = await fetch(`/api/categories?id=${categoryId}&hardDelete=${hardDelete}`, {
+                method: 'DELETE',
+            });
+
+            if (response.ok) {
+                router.push('/editorial-dashboard/categories');
+            } else {
+                const data = await response.json();
+                alert(data.error || 'Failed to delete category');
+            }
+        } catch (error) {
+            console.error('Error deleting category:', error);
+            alert('Failed to delete category');
+        } finally {
+            setDeleting(false);
+            setShowDeleteModal(false);
+        }
+    };
+
+    // Preview Component with safe access
     const CategoryPreview = () => (
         <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
             <div className="bg-linear-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
@@ -214,7 +277,7 @@ export default function CreateCategoryPage() {
                     {/* Color Preview */}
                     <div
                         className="w-16 h-16 rounded-xl flex items-center justify-center text-white text-2xl"
-                        style={{ backgroundColor: formData.color }}
+                        style={{ backgroundColor: formData.color || '#3B82F6' }}
                     >
                         {formData.icon ? (
                             <span className="text-2xl">{formData.icon}</span>
@@ -236,9 +299,11 @@ export default function CreateCategoryPage() {
                 <div className="mb-4">
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${formData.status === 'active'
                         ? 'bg-green-100 text-green-800'
-                        : 'bg-yellow-100 text-yellow-800'
+                        : formData.status === 'draft'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-800'
                         }`}>
-                        {formData.status === 'active' ? '● Active' : '○ Draft'}
+                        {formData.status === 'active' ? '● Active' : formData.status === 'draft' ? '○ Draft' : '📦 Archived'}
                         {formData.featured && (
                             <span className="ml-2 text-yellow-600">✨ Featured</span>
                         )}
@@ -266,18 +331,18 @@ export default function CreateCategoryPage() {
                     </div>
                 )}
 
-                {/* SEO Preview */}
+                {/* SEO Preview - Fixed with safe access */}
                 <div className="border-t pt-6">
                     <h3 className="text-sm font-medium text-gray-700 mb-3">SEO Preview</h3>
                     <div className="bg-gray-50 rounded-lg p-4">
                         <div className="text-sm text-green-700 truncate">
-                            {formData.seo.canonicalUrl || 'https://yoursite.com/categories/' + (formData.slug || 'category-slug')}
+                            {formData.seo?.canonicalUrl || `https://yoursite.com/categories/${formData.slug || 'category-slug'}`}
                         </div>
                         <div className="text-lg text-blue-700 font-medium hover:underline cursor-pointer truncate">
-                            {formData.seo.metaTitle || formData.name || 'Category Title'}
+                            {formData.seo?.metaTitle || formData.name || 'Category Title'}
                         </div>
                         <div className="text-sm text-gray-600 line-clamp-2">
-                            {formData.seo.metaDescription || formData.description || 'Category description will appear here...'}
+                            {formData.seo?.metaDescription || formData.description || 'Category description will appear here...'}
                         </div>
                     </div>
                 </div>
@@ -285,8 +350,91 @@ export default function CreateCategoryPage() {
         </div>
     );
 
+    // Delete Modal
+    const DeleteModal = () => {
+        if (!showDeleteModal) return null;
+
+        return (
+            <div className="fixed inset-0 z-50 overflow-y-auto">
+                <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                    <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+                        <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+                    </div>
+
+                    <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+                    <div className="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                        <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                            <div className="sm:flex sm:items-start">
+                                <div className="mx-auto shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                                    <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
+                                </div>
+                                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                    <h3 className="text-lg leading-6 font-semibold text-gray-900">
+                                        Delete Category
+                                    </h3>
+                                    <div className="mt-2">
+                                        <p className="text-sm text-gray-500">
+                                            Are you sure you want to delete "{formData.name}"? This category will be moved to trash.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
+                            <button
+                                type="button"
+                                onClick={() => handleDelete(false)}
+                                disabled={deleting}
+                                className="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
+                            >
+                                {deleting ? (
+                                    <>
+                                        <ArrowPathIcon className="h-4 w-4 animate-spin mr-2" />
+                                        Deleting...
+                                    </>
+                                ) : (
+                                    'Move to Trash'
+                                )}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleDelete(true)}
+                                disabled={deleting}
+                                className="w-full inline-flex justify-center rounded-lg border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
+                            >
+                                Permanently Delete
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setShowDeleteModal(false)}
+                                disabled={deleting}
+                                className="mt-3 w-full inline-flex justify-center rounded-lg border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:w-auto sm:text-sm"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <ArrowPathIcon className="h-8 w-8 animate-spin mx-auto text-gray-400" />
+                    <p className="mt-2 text-sm text-gray-500">Loading category...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-gray-50 pb-24 md:pb-6">
+            <DeleteModal />
+
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
                 {/* Header */}
                 <div className="mb-6">
@@ -301,16 +449,24 @@ export default function CreateCategoryPage() {
                             </button>
                             <div className="min-w-0 flex-1">
                                 <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 wrap-break-word">
-                                    Create New Category
+                                    Edit Category
                                 </h1>
                                 <p className="text-sm text-gray-500 mt-1 wrap-break-word">
-                                    Organize your content with categories
+                                    Update category information and settings
                                 </p>
                             </div>
                         </div>
 
                         {/* Desktop Action Buttons */}
                         <div className="hidden sm:flex items-center gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setShowDeleteModal(true)}
+                                className="px-4 py-2 bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 font-medium flex items-center gap-2 shadow-sm whitespace-nowrap"
+                            >
+                                <TrashIcon className="h-4 w-4" />
+                                Delete
+                            </button>
                             <button
                                 type="button"
                                 onClick={() => setPreview(!preview)}
@@ -335,12 +491,12 @@ export default function CreateCategoryPage() {
                                 {saving ? (
                                     <>
                                         <ArrowPathIcon className="h-4 w-4 animate-spin" />
-                                        <span>Creating...</span>
+                                        <span>Saving...</span>
                                     </>
                                 ) : (
                                     <>
                                         <CheckCircleIcon className="h-4 w-4" />
-                                        <span>Create Category</span>
+                                        <span>Save Changes</span>
                                     </>
                                 )}
                             </button>
@@ -368,7 +524,7 @@ export default function CreateCategoryPage() {
                                     </label>
                                     <input
                                         type="text"
-                                        value={formData.name}
+                                        value={formData.name || ''}
                                         onChange={handleNameChange}
                                         className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.name ? 'border-red-300 bg-red-50' : 'border-gray-300'
                                             }`}
@@ -398,7 +554,7 @@ export default function CreateCategoryPage() {
                                         </span>
                                         <input
                                             type="text"
-                                            value={formData.slug}
+                                            value={formData.slug || ''}
                                             onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
                                             className={`flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.slug ? 'border-red-300 bg-red-50' : 'border-gray-300'
                                                 }`}
@@ -422,7 +578,7 @@ export default function CreateCategoryPage() {
                                         Description
                                     </label>
                                     <textarea
-                                        value={formData.description}
+                                        value={formData.description || ''}
                                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                         rows="4"
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
@@ -439,7 +595,7 @@ export default function CreateCategoryPage() {
                                         Parent Category (Optional)
                                     </label>
                                     <select
-                                        value={formData.parentId}
+                                        value={formData.parentId || ''}
                                         onChange={(e) => setFormData({ ...formData, parentId: e.target.value })}
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     >
@@ -479,7 +635,7 @@ export default function CreateCategoryPage() {
                                     </label>
                                     <input
                                         type="text"
-                                        value={formData.icon}
+                                        value={formData.icon || ''}
                                         onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
                                         placeholder="e.g., 📱, 💻, 🎨 (emoji or single character)"
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -510,11 +666,11 @@ export default function CreateCategoryPage() {
                                     <div className="mt-3 flex items-center gap-3">
                                         <div
                                             className="w-8 h-8 rounded-full"
-                                            style={{ backgroundColor: formData.color }}
+                                            style={{ backgroundColor: formData.color || '#3B82F6' }}
                                         />
                                         <input
                                             type="color"
-                                            value={formData.color}
+                                            value={formData.color || '#3B82F6'}
                                             onChange={(e) => setFormData({ ...formData, color: e.target.value })}
                                             className="h-8 w-16"
                                         />
@@ -529,7 +685,7 @@ export default function CreateCategoryPage() {
                                     </label>
                                     <input
                                         type="url"
-                                        value={formData.image}
+                                        value={formData.image || ''}
                                         onChange={(e) => setFormData({ ...formData, image: e.target.value })}
                                         placeholder="https://example.com/category-image.jpg"
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -556,7 +712,7 @@ export default function CreateCategoryPage() {
                                         Status
                                     </label>
                                     <select
-                                        value={formData.status}
+                                        value={formData.status || 'active'}
                                         onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     >
@@ -570,7 +726,7 @@ export default function CreateCategoryPage() {
                                 <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
                                     <input
                                         type="checkbox"
-                                        checked={formData.featured}
+                                        checked={formData.featured || false}
                                         onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
                                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                     />
@@ -585,7 +741,7 @@ export default function CreateCategoryPage() {
                             </div>
                         </div>
 
-                        {/* SEO Card */}
+                        {/* SEO Card - Fixed with safe access */}
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                             <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
                                 <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
@@ -600,10 +756,13 @@ export default function CreateCategoryPage() {
                                     </label>
                                     <input
                                         type="text"
-                                        value={formData.seo.metaTitle}
+                                        value={formData.seo?.metaTitle || ''}
                                         onChange={(e) => setFormData({
                                             ...formData,
-                                            seo: { ...formData.seo, metaTitle: e.target.value }
+                                            seo: {
+                                                ...formData.seo,
+                                                metaTitle: e.target.value
+                                            }
                                         })}
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         placeholder="SEO optimized title (defaults to category name)"
@@ -614,10 +773,13 @@ export default function CreateCategoryPage() {
                                         Meta Description
                                     </label>
                                     <textarea
-                                        value={formData.seo.metaDescription}
+                                        value={formData.seo?.metaDescription || ''}
                                         onChange={(e) => setFormData({
                                             ...formData,
-                                            seo: { ...formData.seo, metaDescription: e.target.value }
+                                            seo: {
+                                                ...formData.seo,
+                                                metaDescription: e.target.value
+                                            }
                                         })}
                                         rows="3"
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
@@ -630,10 +792,13 @@ export default function CreateCategoryPage() {
                                     </label>
                                     <input
                                         type="url"
-                                        value={formData.seo.canonicalUrl}
+                                        value={formData.seo?.canonicalUrl || ''}
                                         onChange={(e) => setFormData({
                                             ...formData,
-                                            seo: { ...formData.seo, canonicalUrl: e.target.value }
+                                            seo: {
+                                                ...formData.seo,
+                                                canonicalUrl: e.target.value
+                                            }
                                         })}
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         placeholder="https://example.com/canonical-url"
@@ -644,6 +809,14 @@ export default function CreateCategoryPage() {
 
                         {/* Mobile Action Buttons */}
                         <div className="lg:hidden flex flex-col gap-2 pb-4">
+                            <button
+                                type="button"
+                                onClick={() => setShowDeleteModal(true)}
+                                className="w-full px-4 py-3 bg-white border border-red-300 text-red-600 rounded-lg hover:bg-red-50 font-medium flex items-center justify-center gap-2"
+                            >
+                                <TrashIcon className="h-5 w-5" />
+                                Delete Category
+                            </button>
                             <button
                                 type="button"
                                 onClick={() => setPreview(!preview)}
@@ -669,12 +842,12 @@ export default function CreateCategoryPage() {
                                 {saving ? (
                                     <>
                                         <ArrowPathIcon className="h-5 w-5 animate-spin" />
-                                        Creating...
+                                        Saving...
                                     </>
                                 ) : (
                                     <>
                                         <CheckCircleIcon className="h-5 w-5" />
-                                        Create Category
+                                        Save Changes
                                     </>
                                 )}
                             </button>

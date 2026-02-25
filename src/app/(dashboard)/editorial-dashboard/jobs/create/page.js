@@ -5,7 +5,6 @@ import { useAuth } from '@/context/AuthContext';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import TiptapEditor from '@/app/(dashboard)/components/TiptapEditor';
 import categoryData from '@/app/data/CategoryData';
 
@@ -13,31 +12,22 @@ import {
     BriefcaseIcon,
     BuildingOfficeIcon,
     MapPinIcon,
-    ClockIcon,
     ArrowLeftIcon,
     GlobeAltIcon,
     EyeIcon,
     DocumentDuplicateIcon,
     CurrencyDollarIcon,
-    AcademicCapIcon,
-    UserGroupIcon,
     CheckBadgeIcon,
     PlusIcon,
     XMarkIcon,
-    SparklesIcon,
-    CalendarIcon,
-    PaperAirplaneIcon,
     PencilSquareIcon,
-    BoltIcon,
-    BuildingLibraryIcon,
     MagnifyingGlassIcon,
     PhotoIcon,
-    ChevronDownIcon,
-    HomeIcon,
     CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import { CheckBadgeIcon as CheckBadgeSolid } from '@heroicons/react/24/solid';
 import ImagePicker from '@/app/(dashboard)/components/ImagePicker';
+import Image from 'next/image';
 
 export default function CreateJobPage() {
     const { user } = useAuth();
@@ -72,7 +62,12 @@ export default function CreateJobPage() {
         updatedAt: null,
         status: 'draft',
         isVerified: false,
-        views: 0,
+
+        stats: {
+            views: 0,
+            comments: 0,
+            updatedAt: null
+        },
         location: {
             city: '',
             country: '',
@@ -372,7 +367,7 @@ export default function CreateJobPage() {
 
     const JobPreview = () => (
         <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
+            <div className="bg-linear-to-r from-blue-600 to-indigo-600 px-6 py-4">
                 <div className="flex items-center justify-between">
                     <h2 className="text-white font-semibold flex items-center gap-2">
                         <EyeIcon className="h-5 w-5" />
@@ -388,19 +383,25 @@ export default function CreateJobPage() {
                 {/* Header with Company Info */}
                 <div className="flex flex-col sm:flex-row sm:items-start gap-4 mb-6">
                     {formData.featuredImage ? (
-                        <img
+                        <Image
+                            width={400}
+                            height={300}
                             src={formData.featuredImage}
                             alt={formData.title}
+                            unoptimized
                             className="w-20 h-20 rounded-xl object-cover border-2 border-gray-200"
                         />
                     ) : selectedOrg?.logoUrl ? (
-                        <img
+                        <Image
+                            width={400}
+                            height={300}
                             src={selectedOrg.logoUrl}
                             alt={selectedOrg.companyName}
+                            unoptimized
                             className="w-20 h-20 rounded-xl object-cover border-2 border-gray-200"
                         />
                     ) : (
-                        <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
+                        <div className="w-20 h-20 rounded-xl bg-linear-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
                             <BuildingOfficeIcon className="h-10 w-10 text-blue-600" />
                         </div>
                     )}
@@ -487,11 +488,14 @@ export default function CreateJobPage() {
                         <h3 className="text-lg font-semibold mb-3">Gallery</h3>
                         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                             {formData.gallery.map((img, index) => (
-                                <img
+                                <Image
+                                    width={400}
+                                    height={300}
                                     key={index}
                                     src={img}
                                     alt={`Gallery ${index + 1}`}
                                     className="w-full h-20 object-cover rounded-lg"
+                                    unoptimized
                                 />
                             ))}
                         </div>
@@ -516,10 +520,10 @@ export default function CreateJobPage() {
                                 <ArrowLeftIcon className="h-5 w-5 text-gray-600" />
                             </button>
                             <div className="min-w-0 flex-1">
-                                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 break-words">
+                                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 wrap-break-word">
                                     Create New Job
                                 </h1>
-                                <p className="text-sm text-gray-500 mt-1 break-words">
+                                <p className="text-sm text-gray-500 mt-1 wrap-break-word">
                                     {preview ? 'Preview your job posting' : tabs[activeTab].description}
                                 </p>
                             </div>
@@ -781,7 +785,13 @@ export default function CreateJobPage() {
                                                                             className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 border-b last:border-0"
                                                                         >
                                                                             {org.logoUrl ? (
-                                                                                <img src={org.logoUrl} alt={org.companyName} className="w-8 h-8 rounded-lg object-cover" />
+                                                                                <Image
+                                                                                    src={org.logoUrl}
+                                                                                    alt={org.companyName}
+                                                                                    width={32}
+                                                                                    height={32}
+                                                                                    unoptimized
+                                                                                    className="w-8 h-8 rounded-lg object-cover" />
                                                                             ) : (
                                                                                 <div className="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center">
                                                                                     <BuildingOfficeIcon className="h-4 w-4 text-gray-500" />
@@ -801,9 +811,14 @@ export default function CreateJobPage() {
                                                 {formData.organisation && selectedOrg && (
                                                     <div className="mt-4 p-4 bg-gray-50 rounded-lg flex items-center gap-3">
                                                         {selectedOrg.logoUrl ? (
-                                                            <img src={selectedOrg.logoUrl} alt={selectedOrg.companyName} className="w-12 h-12 rounded-lg object-cover" />
+                                                            <Image
+                                                                src={selectedOrg.logoUrl} alt={selectedOrg.companyName}
+                                                                width={48}
+                                                                height={48}
+                                                                unoptimized
+                                                                className="w-12 h-12 rounded-lg object-cover" />
                                                         ) : (
-                                                            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
+                                                            <div className="w-12 h-12 rounded-lg bg-linear-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
                                                                 <BuildingOfficeIcon className="h-6 w-6 text-blue-600" />
                                                             </div>
                                                         )}
@@ -1061,8 +1076,11 @@ export default function CreateJobPage() {
                                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                                                     {formData.gallery.map((url, index) => (
                                                         <div key={index} className="relative group">
-                                                            <img
+                                                            <Image
+                                                                width={400}
+                                                                height={300}
                                                                 src={url}
+                                                                unoptimized
                                                                 alt={`Gallery ${index + 1}`}
                                                                 className="w-full h-24 object-cover rounded-lg border border-gray-200"
                                                             />
@@ -1201,11 +1219,11 @@ export default function CreateJobPage() {
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(index)}
-                                className={`flex flex-col items-center p-2 rounded-lg transition-colors relative min-w-[60px] ${isActive ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'
+                                className={`flex flex-col items-center p-2 rounded-lg transition-colors relative min-w-15 ${isActive ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'
                                     }`}
                             >
                                 <Icon className="h-5 w-5" />
-                                <span className="text-xs mt-1 truncate max-w-[60px]">{tab.name}</span>
+                                <span className="text-xs mt-1 truncate max-w-15">{tab.name}</span>
                                 {isCompleted && (
                                     <CheckCircleIcon className="absolute -top-1 -right-1 h-3 w-3 text-green-500" />
                                 )}

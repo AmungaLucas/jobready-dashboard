@@ -26,9 +26,9 @@ export async function GET(request) {
             publishedPosts: posts.filter(p => p.status === 'published').length,
             draftPosts: posts.filter(p => p.status === 'draft').length,
             archivedPosts: posts.filter(p => p.status === 'archived').length,
-            totalViews: posts.reduce((sum, p) => sum + (p.views || 0), 0),
+            totalViews: posts.reduce((sum, p) => sum + (p.stats?.views || 0), 0),
             totalComments: posts.reduce((sum, p) => sum + (p.stats?.comments || 0), 0),
-            totalShares: posts.reduce((sum, p) => sum + (p.stats?.shares || 0), 0),
+            totalLikes: posts.reduce((sum, p) => sum + (p.stats?.likes || 0), 0),
             recentComments: commentsSnapshot.size,
             recentUsers: usersSnapshot.size,
             categories: {},
@@ -49,11 +49,13 @@ export async function GET(request) {
                     summary.authors[authorId] = {
                         name: post.createdBy.name || 'Unknown',
                         count: 0,
-                        views: 0
+                        views: 0,
+                        likes: 0
                     };
                 }
                 summary.authors[authorId].count++;
-                summary.authors[authorId].views += post.views || 0;
+                summary.authors[authorId].views += post.stats?.views || 0;
+                summary.authors[authorId].likes += post.stats?.likes || 0;
             }
         });
 

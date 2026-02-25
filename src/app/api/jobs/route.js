@@ -190,7 +190,7 @@ export async function GET(request) {
             draft: filteredAllJobs.filter(j => j.status === 'draft').length,
             filled: filteredAllJobs.filter(j => j.status === 'filled').length,
             expired: filteredAllJobs.filter(j => j.status === 'expired').length,
-            views: filteredAllJobs.reduce((sum, j) => sum + (j.views || 0), 0),
+            views: filteredAllJobs.reduce((sum, j) => sum + (j.stats?.views || 0), 0),
             applications: filteredAllJobs.reduce((sum, j) => sum + (j.applications || 0), 0)
         }
 

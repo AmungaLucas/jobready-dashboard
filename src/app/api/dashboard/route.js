@@ -1,4 +1,4 @@
-// app/api/dashboard/route.js (Combined endpoint for all dashboard data)
+// app/api/dashboard/route.js
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 
@@ -44,6 +44,7 @@ export async function GET(request) {
             publishedPosts: 0,
             archivedPosts: 0,
             totalComments: 0,
+            totalLikes: 0,
             totalShares: 0,
             avgReadTime: 0,
             totalViews: 0
@@ -59,31 +60,30 @@ export async function GET(request) {
             if (post.status === 'published') stats.publishedPosts++;
             if (post.status === 'archived') stats.archivedPosts++;
 
+            // Get values from stats object
+            const postViews = post.stats?.views || 0;
+            const postComments = post.stats?.comments || 0;
+            const postLikes = post.stats?.likes || 0;
+
             // Views
-            if (post.views) {
-                stats.totalViews += post.views;
+            if (postViews > 0) {
+                stats.totalViews += postViews;
 
                 if (post.publishedAt) {
                     const publishedDate = post.publishedAt.toDate ? post.publishedAt.toDate() : new Date(post.publishedAt);
 
                     if (publishedDate >= startOfDay) {
-                        stats.viewsToday += post.views;
+                        stats.viewsToday += postViews;
                     } else if (publishedDate >= startOfYesterday && publishedDate < startOfDay) {
-                        stats.viewsYesterday += post.views;
+                        stats.viewsYesterday += postViews;
                     }
                 }
             }
 
             // Engagement
-            if (post.stats?.comments) {
-                stats.totalComments += post.stats.comments;
-                totalEngagement += post.stats.comments;
-            }
-
-            if (post.stats?.shares) {
-                stats.totalShares += post.stats.shares;
-                totalEngagement += post.stats.shares;
-            }
+            stats.totalComments += postComments;
+            stats.totalLikes += postLikes;
+            totalEngagement += postComments + postLikes;
 
             // Read time
             if (post.settings?.estimatedReadTime) {
@@ -102,18 +102,15 @@ export async function GET(request) {
             stats.previousEngagement = stats.engagementRate * 0.85; // Placeholder
         }
 
-        // Calculate performance data
-        const performance = {
-            dailyViews: stats.viewsToday,
-            dailyViewsTarget: 1000,
-            engagement: stats.engagementRate,
-            engagementTarget: 20
-        };
-
         return NextResponse.json({
             stats,
             recentPosts,
-            performance
+            performance: {
+                dailyViews: stats.viewsToday,
+                dailyViewsTarget: 1000,
+                engagement: stats.engagementRate,
+                engagementTarget: 20
+            }
         });
     } catch (error) {
         console.error('Error fetching dashboard data:', error);

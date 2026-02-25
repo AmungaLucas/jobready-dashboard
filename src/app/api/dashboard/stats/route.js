@@ -6,7 +6,7 @@ export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
         const userId = searchParams.get('userId');
-        const timeRange = searchParams.get('timeRange') || 'today'; // today, week, month
+        const timeRange = searchParams.get('timeRange') || 'today';
 
         // Calculate date ranges
         const now = new Date();
@@ -23,7 +23,6 @@ export async function GET(request) {
         // Fetch all posts
         let postsQuery = adminDb.collection('posts');
 
-        // If userId is provided, filter by creator
         if (userId) {
             postsQuery = postsQuery.where('createdBy.userId', '==', userId);
         }
@@ -46,6 +45,7 @@ export async function GET(request) {
             publishedPosts: 0,
             archivedPosts: 0,
             totalComments: 0,
+            totalLikes: 0,
             totalShares: 0,
             avgReadTime: 0,
             totalViews: 0
@@ -60,39 +60,38 @@ export async function GET(request) {
             if (post.status === 'published') stats.publishedPosts++;
             if (post.status === 'archived') stats.archivedPosts++;
 
-            // Calculate views by time periods
-            if (post.views) {
-                stats.totalViews += post.views;
+            // Get views from stats object
+            const postViews = post.stats?.views || 0;
+            const postComments = post.stats?.comments || 0;
+            const postLikes = post.stats?.likes || 0;
 
-                // Check if post was viewed today/yesterday (simplified - in production you'd have view timestamps)
+            // Calculate total views
+            if (postViews > 0) {
+                stats.totalViews += postViews;
+
+                // Check when the post was published/viewed
                 if (post.publishedAt) {
                     const publishedDate = post.publishedAt.toDate ? post.publishedAt.toDate() : new Date(post.publishedAt);
 
                     if (publishedDate >= startOfDay) {
-                        stats.viewsToday += post.views || 0;
+                        stats.viewsToday += postViews;
                     } else if (publishedDate >= startOfYesterday && publishedDate < startOfDay) {
-                        stats.viewsYesterday += post.views || 0;
+                        stats.viewsYesterday += postViews;
                     }
 
                     if (publishedDate >= startOfWeek) {
-                        stats.viewsThisWeek += post.views || 0;
+                        stats.viewsThisWeek += postViews;
                     }
 
                     if (publishedDate >= startOfMonth) {
-                        stats.viewsThisMonth += post.views || 0;
+                        stats.viewsThisMonth += postViews;
                     }
                 }
             }
 
-            // Count comments
-            if (post.stats?.comments) {
-                stats.totalComments += post.stats.comments;
-            }
-
-            // Count shares
-            if (post.stats?.shares) {
-                stats.totalShares += post.stats.shares;
-            }
+            // Count comments and likes from stats
+            stats.totalComments += postComments;
+            stats.totalLikes += postLikes;
 
             // Calculate average read time
             if (post.settings?.estimatedReadTime) {
@@ -106,12 +105,10 @@ export async function GET(request) {
             ? Math.round((totalReadTime / postsWithReadTime) * 10) / 10
             : 0;
 
-        // Calculate engagement rate (comments + shares per view)
+        // Calculate engagement rate (comments + likes per view)
         if (stats.totalViews > 0) {
-            const totalEngagement = stats.totalComments + stats.totalShares;
+            const totalEngagement = stats.totalComments + stats.totalLikes;
             stats.engagementRate = Math.round((totalEngagement / stats.totalViews) * 100 * 10) / 10;
-
-            // Previous period engagement (simplified - using same calculation)
             stats.previousEngagement = stats.engagementRate * 0.85; // Placeholder
         }
 

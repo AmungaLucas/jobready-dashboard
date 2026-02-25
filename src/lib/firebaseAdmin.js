@@ -5,49 +5,57 @@ import admin from 'firebase-admin';
 const isServer = typeof window === 'undefined';
 
 // Only initialize on the server
-if (!admin.apps.length && isServer) {
+if (isServer && typeof process !== 'undefined' && process.env.NODE_ENV) {
   try {
-    // Normalize private key from env vars
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
+    // Check if already initialized to avoid multiple initializations
+    if (!admin.apps.length) {
+      // Make sure all required env vars exist
+      if (!process.env.FIREBASE_PRIVATE_KEY || !process.env.FIREBASE_CLIENT_EMAIL) {
+        console.warn('Firebase Admin credentials not found in environment variables');
+      } else {
+        // Normalize private key from env vars
+        const privateKey = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
 
-    let clientEmail = process.env.FIREBASE_CLIENT_EMAIL || '';
-    if (clientEmail.startsWith('"') && clientEmail.endsWith('"')) {
-      clientEmail = clientEmail.slice(1, -1);
+        let clientEmail = process.env.FIREBASE_CLIENT_EMAIL || '';
+        if (clientEmail.startsWith('"') && clientEmail.endsWith('"')) {
+          clientEmail = clientEmail.slice(1, -1);
+        }
+
+        // Get storage bucket and normalize it
+        const rawBucket = process.env.FIREBASE_STORAGE_BUCKET ||
+          process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+
+        // Normalize: remove gs:// prefix, trim, and remove trailing slashes
+        const storageBucket = rawBucket
+          ? rawBucket.replace(/^gs:\/\//i, '').replace(/\/+$/, '').trim()
+          : '';
+
+        if (!storageBucket) {
+          console.warn('FIREBASE_STORAGE_BUCKET is not set. Storage functionality will not work.');
+        } else {
+          console.log('Using storage bucket:', storageBucket);
+        }
+
+        const serviceAccount = {
+          type: 'service_account',
+          project_id: process.env.FIREBASE_PROJECT_ID,
+          private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+          private_key: privateKey,
+          client_email: clientEmail,
+          client_id: process.env.FIREBASE_CLIENT_ID,
+          auth_uri: 'https://accounts.google.com/o/oauth2/auth',
+          token_uri: 'https://oauth2.googleapis.com/token',
+        };
+
+        // Initialize with both credential and normalized storage bucket
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount),
+          storageBucket: storageBucket,
+        });
+
+        console.log('Firebase Admin initialized successfully with bucket:', storageBucket || '(none)');
+      }
     }
-
-    // Get storage bucket and normalize it
-    const rawBucket = process.env.FIREBASE_STORAGE_BUCKET ||
-      process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-
-    // Normalize: remove gs:// prefix, trim, and remove trailing slashes
-    const storageBucket = rawBucket
-      ? rawBucket.replace(/^gs:\/\//i, '').replace(/\/+$/, '').trim()
-      : '';
-
-    if (!storageBucket) {
-      console.warn('FIREBASE_STORAGE_BUCKET is not set. Storage functionality will not work.');
-    } else {
-      console.log('Using storage bucket:', storageBucket);
-    }
-
-    const serviceAccount = {
-      type: 'service_account',
-      project_id: process.env.FIREBASE_PROJECT_ID,
-      private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-      private_key: privateKey,
-      client_email: clientEmail,
-      client_id: process.env.FIREBASE_CLIENT_ID,
-      auth_uri: 'https://accounts.google.com/o/oauth2/auth',
-      token_uri: 'https://oauth2.googleapis.com/token',
-    };
-
-    // Initialize with both credential and normalized storage bucket
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      storageBucket: storageBucket,
-    });
-
-    console.log('Firebase Admin initialized successfully with bucket:', storageBucket || '(none)');
   } catch (error) {
     console.error('Firebase admin initialization error:', error);
     console.error('Error details:', {
@@ -109,7 +117,7 @@ export const getStorageBucket = () => {
 };
 
 // Export with type safety - only export if on server
-export const adminAuth = isServer ? admin.auth() : null;
-export const adminDb = isServer ? admin.firestore() : null;
-export const adminStorage = isServer ? admin.storage() : null;
-export default isServer ? admin : null;
+export const adminAuth = isServer ? (admin.apps.length ? admin.auth() : null) : null;
+export const adminDb = isServer ? (admin.apps.length ? admin.firestore() : null) : null;
+export const adminStorage = isServer ? (admin.apps.length ? admin.storage() : null) : null;
+export default isServer ? (admin.apps.length ? admin : null) : null;

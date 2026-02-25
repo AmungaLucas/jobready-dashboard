@@ -1,8 +1,19 @@
-import { adminDb } from '@/lib/firebaseAdmin';
 import { NextResponse } from 'next/server';
 
 export async function GET(request, { params }) {
     try {
+        // Dynamically import Firebase Admin only when needed
+        const { adminDb } = await import('@/lib/firebaseAdmin');
+
+        // Check if adminDb is available (prevents client-side execution)
+        if (!adminDb) {
+            console.error('Firebase Admin is not initialized or running on client side');
+            return NextResponse.json(
+                { error: 'Server configuration error' },
+                { status: 500 }
+            );
+        }
+
         const { id } = params;
 
         // Get editor details
@@ -85,6 +96,18 @@ export async function GET(request, { params }) {
 
 export async function PATCH(request, { params }) {
     try {
+        // Dynamically import Firebase Admin only when needed
+        const { adminDb } = await import('@/lib/firebaseAdmin');
+
+        // Check if adminDb is available
+        if (!adminDb) {
+            console.error('Firebase Admin is not initialized or running on client side');
+            return NextResponse.json(
+                { error: 'Server configuration error' },
+                { status: 500 }
+            );
+        }
+
         const { id } = params;
         const { featured, isActive } = await request.json();
 

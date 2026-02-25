@@ -7,7 +7,7 @@ export async function GET(request, { params }) {
 
         // Get editor details
         const editorDoc = await adminDb.collection('editors').doc(id).get();
-        
+
         if (!editorDoc.exists) {
             return NextResponse.json(
                 { error: 'Editor not found' },

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { adminAuth } from './src/lib/firebaseAdmin';
+import { adminAuth } from '@/lib/firebaseAdmin';
 
 export async function proxy(request) {
   const session = request.cookies.get('session')?.value || '';

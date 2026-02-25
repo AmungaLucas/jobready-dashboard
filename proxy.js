@@ -1,53 +1,35 @@
 import { NextResponse } from 'next/server';
+import { adminAuth } from '@/lib/firebaseAdmin';
 
-export async function GET(request) {
-  return handleProxy(request);
-}
+export async function proxy(request) {
+  const session = request.cookies.get('session')?.value || '';
+  const pathname = request.nextUrl.pathname;
 
-export async function POST(request) {
-  return handleProxy(request);
-}
+  // Public paths that don't require authentication
+  const publicPaths = ['/login', '/unauthorized'];
+  if (publicPaths.includes(pathname)) {
+    return NextResponse.next();
+  }
 
-export async function PUT(request) {
-  return handleProxy(request);
-}
+  // Define role-based paths with more granularity
+  const rolePaths = {
+    '/admin-dashboard': ['admin'],
+    '/editorial-dashboard': ['editor', 'admin'],
+    '/moderators-dashboard': ['moderator', 'admin'],
+  };
 
-export async function DELETE(request) {
-  return handleProxy(request);
-}
+  // Check if the path requires specific roles
+  const requiredRoles = Object.entries(rolePaths).find(([path]) =>
+    pathname.startsWith(path)
+  )?.[1];
 
-async function handleProxy(request) {
+  if (!requiredRoles) {
+    return NextResponse.next();
+  }
+
   try {
-    // Dynamically import Firebase Admin
-    const { adminAuth } = await import('@/lib/firebaseAdmin');
-
-    const session = request.cookies.get('session')?.value || '';
-    const pathname = request.nextUrl.pathname.replace('/api/proxy', ''); // Adjust based on your route structure
-
-    // Public paths that don't require authentication
-    const publicPaths = ['/login', '/unauthorized'];
-    if (publicPaths.includes(pathname)) {
-      return NextResponse.next();
-    }
-
-    // Define role-based paths with more granularity
-    const rolePaths = {
-      '/admin-dashboard': ['admin'],
-      '/editorial-dashboard': ['editor', 'admin'],
-      '/moderators-dashboard': ['moderator', 'admin'],
-    };
-
-    // Check if the path requires specific roles
-    const requiredRoles = Object.entries(rolePaths).find(([path]) =>
-      pathname.startsWith(path)
-    )?.[1];
-
-    if (!requiredRoles) {
-      return NextResponse.next();
-    }
-
     // Verify the session token
-    const decodedClaims = await verifySession(session, adminAuth);
+    const decodedClaims = await verifySession(session);
     const userRole = decodedClaims.role;
 
     // Check if user has required role
@@ -56,12 +38,7 @@ async function handleProxy(request) {
       return NextResponse.redirect(new URL('/unauthorized', request.url));
     }
 
-    // Proxy request to backend service or API if needed
-    const proxyResponse = await proxyRequest(request, session);
-
-    // Return the proxied response
-    return proxyResponse;
-
+    return NextResponse.next();
   } catch (error) {
     // No valid session or role mismatch
     console.error('Session verification failed or user unauthorized:', error);
@@ -69,13 +46,9 @@ async function handleProxy(request) {
   }
 }
 
-async function verifySession(session, adminAuth) {
+async function verifySession(session) {
   if (!session) {
     throw new Error('No session');
-  }
-
-  if (!adminAuth) {
-    throw new Error('Firebase Admin not initialized');
   }
 
   try {
@@ -87,30 +60,11 @@ async function verifySession(session, adminAuth) {
   }
 }
 
-async function proxyRequest(request, session) {
-  const proxyUrl = 'https://your-proxy-service.com/api';  // Replace with your actual proxy URL
-
-  const headers = {
-    ...Object.fromEntries(request.headers),  // Forward original headers
-    'Authorization': `Bearer ${session}`,
-  };
-
-  // Clone the request to get body if needed
-  let body = null;
-  if (request.method !== 'GET' && request.method !== 'HEAD') {
-    try {
-      body = await request.json();
-    } catch (e) {
-      // No body or invalid JSON
-    }
-  }
-
-  const proxyRes = await fetch(proxyUrl + request.nextUrl.pathname.replace('/api/proxy', ''), {
-    method: request.method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  const responseBody = await proxyRes.json();
-  return NextResponse.json(responseBody, { status: proxyRes.status });
-}
+export const config = {
+  matcher: [
+    '/admin-dashboard/:path*',
+    '/editorial-dashboard/:path*',
+    '/moderators-dashboard/:path*',
+    '/',
+  ],
+};

@@ -77,6 +77,28 @@ export default function EditCategoryPage() {
         { value: '#6B7280', label: 'Gray', class: 'bg-gray-500' },
     ];
 
+    // Helper function to get auth token
+    const getAuthToken = async () => {
+        if (!user) return null;
+
+        // Try different methods to get the token based on your auth setup
+        if (typeof user.getIdToken === 'function') {
+            return await user.getIdToken();
+        } else if (typeof user.getIdTokenResult === 'function') {
+            const result = await user.getIdTokenResult();
+            return result.token;
+        } else if (user.token) {
+            return user.token;
+        } else if (user.accessToken) {
+            return user.accessToken;
+        } else if (user.stsTokenManager?.accessToken) {
+            return user.stsTokenManager.accessToken;
+        }
+
+        console.warn('No token method found on user object', user);
+        return null;
+    };
+
     // Fetch category data on mount
     useEffect(() => {
         if (categoryId) {
@@ -96,7 +118,13 @@ export default function EditCategoryPage() {
     const fetchCategory = async () => {
         setLoading(true);
         try {
-            const response = await fetch(`/api/categories?id=${categoryId}&includeCounts=true`);
+            const token = await getAuthToken();
+            const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+            const response = await fetch(`/api/categories/${categoryId}/edit?includeCounts=true`, {
+                headers
+            });
+
             if (response.ok) {
                 const data = await response.json();
 
@@ -121,7 +149,8 @@ export default function EditCategoryPage() {
                 alert('Category not found');
                 router.push('/editorial-dashboard/categories');
             } else {
-                alert('Failed to load category');
+                const error = await response.json();
+                alert(error.error || 'Failed to load category');
             }
         } catch (error) {
             console.error('Error fetching category:', error);
@@ -134,7 +163,12 @@ export default function EditCategoryPage() {
     const fetchParentCategories = async () => {
         setLoadingCategories(true);
         try {
-            const response = await fetch('/api/categories');
+            const token = await getAuthToken();
+            const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+            const response = await fetch('/api/categories', {
+                headers
+            });
             if (response.ok) {
                 const data = await response.json();
                 // Filter out current category and deleted ones
@@ -200,22 +234,19 @@ export default function EditCategoryPage() {
 
         setSaving(true);
         try {
-            const categoryData = {
-                ...formData,
-                updatedBy: {
-                    userId: user?.uid || '',
-                    name: user?.name || user?.email || '',
-                    avatar: user?.avatar || ''
-                },
-                updatedAt: new Date().toISOString()
+            const token = await getAuthToken();
+            const headers = {
+                'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` })
             };
 
-            const response = await fetch(`/api/categories?id=${categoryId}`, {
+            // Remove updatedBy from client - server will set it based on auth
+            const { updatedBy, ...dataToSend } = formData;
+
+            const response = await fetch(`/api/categories/${categoryId}/edit`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(categoryData),
+                headers,
+                body: JSON.stringify(dataToSend),
             });
 
             if (response.ok) {
@@ -237,15 +268,52 @@ export default function EditCategoryPage() {
     };
 
     const handleSaveDraft = async () => {
-        setFormData({ ...formData, status: 'draft' });
-        await handleSubmit(new Event('submit'));
+        setSaving(true);
+        try {
+            const token = await getAuthToken();
+            const headers = {
+                'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` })
+            };
+
+            // Prepare draft data (only send changed fields for PATCH)
+            const draftData = {
+                status: 'draft',
+                ...formData
+            };
+
+            // Remove updatedBy from client
+            const { updatedBy, ...dataToSend } = draftData;
+
+            const response = await fetch(`/api/categories/${categoryId}/edit`, {
+                method: 'PATCH',
+                headers,
+                body: JSON.stringify(dataToSend),
+            });
+
+            if (response.ok) {
+                router.push('/editorial-dashboard/categories');
+            } else {
+                const data = await response.json();
+                alert(data.error || 'Failed to save draft');
+            }
+        } catch (error) {
+            console.error('Error saving draft:', error);
+            alert('Failed to save draft');
+        } finally {
+            setSaving(false);
+        }
     };
 
     const handleDelete = async (hardDelete = false) => {
         setDeleting(true);
         try {
-            const response = await fetch(`/api/categories?id=${categoryId}&hardDelete=${hardDelete}`, {
+            const token = await getAuthToken();
+            const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+            const response = await fetch(`/api/categories/${categoryId}/edit?hardDelete=${hardDelete}`, {
                 method: 'DELETE',
+                headers
             });
 
             if (response.ok) {
@@ -263,7 +331,7 @@ export default function EditCategoryPage() {
         }
     };
 
-    // Preview Component with safe access
+    // Preview Component
     const CategoryPreview = () => (
         <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
             <div className="bg-linear-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
@@ -331,7 +399,7 @@ export default function EditCategoryPage() {
                     </div>
                 )}
 
-                {/* SEO Preview - Fixed with safe access */}
+                {/* SEO Preview */}
                 <div className="border-t pt-6">
                     <h3 className="text-sm font-medium text-gray-700 mb-3">SEO Preview</h3>
                     <div className="bg-gray-50 rounded-lg p-4">
@@ -537,7 +605,8 @@ export default function EditCategoryPage() {
                                         </p>
                                     ) : (
                                         <p className="mt-1 text-sm text-gray-500 flex items-center gap-1">
-                                            <CheckCircleIcon className={`h-4 w-4 ${charCounts.name >= 3 ? 'text-green-500' : 'text-gray-400'}`} />
+                                            <CheckCircleIcon className={`h-4 w-4 ${charCounts.name >= 3 ? 'text-green-500' : 'text-gray-400'
+                                                }`} />
                                             {charCounts.name}/3 characters minimum
                                         </p>
                                     )}
@@ -741,7 +810,7 @@ export default function EditCategoryPage() {
                             </div>
                         </div>
 
-                        {/* SEO Card - Fixed with safe access */}
+                        {/* SEO Card */}
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                             <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
                                 <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
